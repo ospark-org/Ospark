@@ -9,7 +9,6 @@ class Block(BasicModule):
 
     def __init__(self, obj_name: str) -> NoReturn:
         super().__init__(obj_name=obj_name)
-        self.layers = []
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
