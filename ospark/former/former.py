@@ -2,7 +2,7 @@ from ospark.nn.component.basic_module import BasicModule
 from ospark.nn.component.normalization import Normalization
 from ospark.nn.block import Block
 from ospark.nn.component.weight import Weight
-from typing import List, Tuple, NoReturn
+from typing import List, Tuple, NoReturn, Optional
 import ospark
 import numpy as np
 import tensorflow as tf
@@ -14,15 +14,15 @@ class Former(BasicModule):
                  encoder_blocks: List[Block],
                  class_number: int,
                  embedding_size: int,
-                 decoder_blocks: List[Block] = [],
-                 max_length: int = 2000
+                 decoder_blocks: Optional[List[Block]]=None,
+                 max_length: int=2000
                  ) -> NoReturn:
         super().__init__(obj_name=obj_name)
         self._embedding_size = embedding_size
         self._max_length = max_length
         self._encoding_table = self.create_encoding_table()
         self._encoder_blocks = encoder_blocks
-        self._decoder_blocks = decoder_blocks
+        self._decoder_blocks = decoder_blocks or []
         self._class_number   = class_number
         self._classify_layer = ospark.weight.truncated_normal(obj_name="classify_layer",
                                                               weight_shape=[self.embedding_size, class_number])
@@ -90,12 +90,12 @@ class Former(BasicModule):
         input_data += tf.nn.embedding_lookup(self.encoding_table, loolkup_index) * encodding_mask
         return input_data
 
-    def model(self, encoder_input: tf.Tensor, decoder_input: tf.Tensor=None) -> tf.Tensor:
+    def model(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
         raise NotImplementedError()
 
     def create(self) -> NoReturn:
         super().create("model")
 
     @tf.function
-    def __call__(self, encoder_input: tf.Tensor, decoder_input: tf.Tensor=None) -> tf.Tensor:
+    def __call__(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
         return self.model(encoder_input, decoder_input)

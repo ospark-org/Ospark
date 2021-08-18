@@ -2,7 +2,7 @@
 import tensorflow as tf
 from . import Layer
 from ospark.nn.component.normalization import Normalization
-from typing import NoReturn, Tuple, Callable
+from typing import NoReturn, Tuple, Callable, Optional
 import ospark
 
 class SelfAttention(Layer):
@@ -11,7 +11,7 @@ class SelfAttention(Layer):
                  obj_name: str, 
                  embedding_size: int, 
                  head_number: int, 
-                 normalization: Normalization=None,
+                 normalization: Optional[Normalization]=None,
                  look_ahead: bool=False) -> NoReturn:
         super().__init__(obj_name=obj_name)
         self._embedding_size            = embedding_size
@@ -44,7 +44,7 @@ class SelfAttention(Layer):
     def look_ahead_mask(self) -> tf.Tensor:
         return 1 - tf.linalg.band_part(tf.ones((self.sequence_length, self.sequence_length)), -1, 0)
 
-    def setting(self) -> NoReturn:
+    def initialize(self) -> NoReturn:
         self.assign(ospark.weight.truncated_normal(
                                 obj_name="QKV_weights",
                                 weight_shape=[3, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]
@@ -54,7 +54,7 @@ class SelfAttention(Layer):
                                 weight_shape=[self.embedding_size, self.embedding_size]
         ))
 
-    def model(self, input_data: tf.Tensor, mask: tf.Tensor=None) -> tf.Tensor:
+    def model(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
         Q, K, V = self.QKV_process(input_data)
         main_output = self.attention_layer(Q, K, V, mask)
         residual_output = self.residual_net(input_data)
@@ -72,12 +72,12 @@ class SelfAttention(Layer):
                         Q: tf.Tensor, 
                         K: tf.Tensor, 
                         V: tf.Tensor, 
-                        mask: tf.Tensor=None) -> tf.Tensor:
+                        mask: Optional[tf.Tensor]=None) -> tf.Tensor:
         attention_value = self.attention(Q, K, V, mask)
         layer_output = tf.matmul(attention_value, self.assigned.output_weights)
         return layer_output
 
-    def attention(self, Q: tf.Tensor, K: tf.Tensor, V: tf.Tensor, mask: tf.Tensor=None) -> tf.Tensor:
+    def attention(self, Q: tf.Tensor, K: tf.Tensor, V: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
         K = tf.transpose(K, [0, 1, 3, 2])
         scaled_dot_product = tf.matmul(Q, K) / tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
         if self.look_ahead:
@@ -93,7 +93,7 @@ class SelfAttention(Layer):
     def residual_net(self, input_data: tf.Tensor) -> tf.Tensor:
         return input_data
 
-    def __call__(self, mask: tf.Tensor=None) -> Callable[[tf.Tensor], tf.Tensor]:
+    def __call__(self, mask: Optional[tf.Tensor]=None) -> Callable[[tf.Tensor], tf.Tensor]:
         def model(input_data: tf.Tensor) -> tf.Tensor:
             return self.model(input_data, mask)
         return model
@@ -104,7 +104,7 @@ class EncoderDecoderAttention(SelfAttention):
                  obj_name: str, 
                  embedding_size: int, 
                  head_number: int, 
-                 normalization: Normalization=None,
+                 normalization: Optional[Normalization]=None,
                  look_ahead: bool=False) -> NoReturn:
         super().__init__(obj_name=obj_name, 
                          embedding_size=embedding_size, 
@@ -117,7 +117,7 @@ class EncoderDecoderAttention(SelfAttention):
     def encoder_output(self) -> None:
         return self._encoder_output
 
-    def setting(self) -> NoReturn:
+    def initialize(self) -> NoReturn:
         self.assign(ospark.weight.truncated_normal(
                                 obj_name="Q_weights",
                                 weight_shape=[1, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]
