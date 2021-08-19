@@ -63,7 +63,7 @@ class SelfAttention(Layer):
         return layer_output
 
     def QKV_process(self, input_data: tf.Tensor) -> Tuple[tf.Tensor]:
-        input_data = tf.tile(input_data[:, tf.newaxis, tf.newaxis, :, :], [1, 3, 4, 1, 1])
+        input_data = tf.tile(input_data[:, tf.newaxis, tf.newaxis, :, :], [1, 3, self.head_number, 1, 1])
         QKV = tf.matmul(input_data, self.assigned.QKV_weights)
         Q, K, V = tf.unstack(QKV, num=3, axis=1)
         return Q, K, V
