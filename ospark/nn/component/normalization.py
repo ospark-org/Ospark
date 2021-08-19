@@ -26,11 +26,3 @@ class LayerNormalization(Normalization):
         mean, variance = tf.nn.moments(input_data, axes=[1], keepdims=True)
         normalization_outputs = (input_data - mean) / tf.sqrt(variance + 1e-5)
         return normalization_outputs
-
-
-#TODO 待實作
-class BatchNormalization(Normalization):
-
-    def __init__(self):
-        pass
-

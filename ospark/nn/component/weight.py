@@ -1,18 +1,18 @@
 from __future__ import annotations
 import tensorflow as tf 
-from typing import List, Dict, NoReturn
+from typing import List, NoReturn
 
 
 class Weight:
 
     def __init__(self, 
                  obj_name: str, 
-                 creator,
+                 creator_func,
                  weight_shape: list) -> NoReturn:
         self._obj_name         = obj_name
         self._indexed_name = None
         self._value        = None
-        self._creator      = creator
+        self._creator_func = creator_func
         self.weight_shape  = weight_shape
 
     @property
@@ -28,8 +28,8 @@ class Weight:
         return self._value
 
     @property
-    def creator(self):
-        return self._creator
+    def creator_func(self):
+        return self._creator_func
 
     def create(self, prefix_word: str) -> NoReturn:
         manager = WeightOperator()
@@ -37,7 +37,7 @@ class Weight:
         manager.add_weight(self)
         if self._value is None:
             print(f"Initialize weight {self.indexed_name}")
-            self._value = tf.Variable(self.creator(shape=self.weight_shape))
+            self._value = tf.Variable(self.creator_func(shape=self.weight_shape))
 
     @property
     def get(self) -> NoReturn:

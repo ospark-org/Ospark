@@ -17,13 +17,9 @@ class Block(BasicModule):
         return output
 
     @abstractmethod
-    def setting(self) -> NoReturn:
+    def initialize(self) -> NoReturn:
         pass
-    
-    # Block 是模型中一個重複結構的單元，結構的重複內部的神經元卻不見得一樣
-    # 所以我想要先設定結構，再設定 layer 的結構參數
-    # transformer_encoder = Block.set_layer([SelfAttention, FFNN])
-    # block_1 = transformer_encoder("block_1", cnofigs)
+
     @classmethod
     def draw_structure(cls, layer_classes: List[Layer]):
         def set_configs(obj_name: str, configs: list) -> Block:

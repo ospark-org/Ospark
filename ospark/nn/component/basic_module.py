@@ -1,7 +1,7 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from abc import ABC
 from ospark.nn.component.weight import Weight
-from typing import NoReturn
+from typing import NoReturn, Optional
 
 
 class BasicModule(ABC):
@@ -18,14 +18,14 @@ class BasicModule(ABC):
     def assigned(self) -> Assigned:
         return self._assigned
 
-    def setting(self) -> NoReturn:
+    def initialize(self) -> NoReturn:
         pass
 
-    def assign(self, component: BasicModule, name: str=None) -> NoReturn:
+    def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
         self.assigned.assign(component, name)
 
     def create(self, prefix_word: str) -> NoReturn:
-        self.setting()
+        self.initialize()
         prefix_word += f"_{self.obj_name}"
         for component in self.assigned:
             component.create(prefix_word)
@@ -36,7 +36,7 @@ class Assigned:
     def __init__(self) -> NoReturn:
         self.component_names = []
 
-    def assign(self, component: BasicModule, name: str=None) -> NoReturn:
+    def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
         if name is None:
             name = component.obj_name
         setattr(self, name, component)

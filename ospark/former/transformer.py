@@ -2,7 +2,7 @@ from ospark.former.former import Former
 from ospark.nn.component.basic_module import BasicModule
 from ospark.nn.component.normalization import Normalization
 from ospark.nn.block.transformer_block import encoder_block, decoder_block
-from typing import List, NoReturn
+from typing import List, NoReturn, Optional
 import tensorflow as tf
 import ospark
 
@@ -14,14 +14,16 @@ class Transformer(Former):
                  encoder_blocks: List[BasicModule], 
                  class_number: int, 
                  embedding_size: int,
-                 decoder_blocks: List[BasicModule]=[],
+                 use_graph_mode: bool=True,
+                 decoder_blocks: Optional[List[BasicModule]]=None,
                  max_length: int=2000,
-                 normalization: Normalization=None, 
+                 normalization: Optional[Normalization]=None,
                  initial_norm: bool=False) -> NoReturn:
         super().__init__(obj_name=obj_name,
                          encoder_blocks=encoder_blocks,
                          class_number=class_number,
                          embedding_size=embedding_size,
+                         use_graph_mode=use_graph_mode,
                          decoder_blocks=decoder_blocks,
                          max_length=max_length
                          )
@@ -36,7 +38,7 @@ class Transformer(Former):
     def normalization(self) -> Normalization:
         return self._normalization
 
-    def model(self, encoder_input: tf.Tensor, decoder_input: tf.Tensor=None) -> tf.Tensor:
+    def model(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
         padding_mask, encoder_encodding_mask, prediction_mask = self.create_mask_matrix(encoder_input)
         encoder_input = self.positional_encoding(encoder_input, encoder_encodding_mask)
         if self.initial_norm:
@@ -62,7 +64,7 @@ class Transformer(Former):
                     scale_rate: int,
                     class_number :int,
                     max_length: int=2000,
-                    normalization: Normalization=None,
+                    normalization: Optional[Normalization]=None,
                     initial_norm: bool=False) -> Former:
         encoder_blocks = []
         decoder_blocks = []

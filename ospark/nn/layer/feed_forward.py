@@ -2,7 +2,7 @@
 from . import Layer
 from ospark.nn.component.normalization import Normalization
 from ospark.nn.component.activation import Activation
-from typing import NoReturn
+from typing import NoReturn, Optional
 import tensorflow as tf 
 import ospark
 
@@ -13,8 +13,8 @@ class FeedForward(Layer):
                  obj_name: str, 
                  embedding_size: int, 
                  scale_rate: int, 
-                 activation: Activation=None, 
-                 normalization: Normalization=None) -> NoReturn:
+                 activation: Optional[Activation]=None,
+                 normalization: Optional[Normalization]=None) -> NoReturn:
         super().__init__(obj_name=obj_name)
         self._normalization  = normalization or ospark.normalization.LayerNormalization()
         self._activation     = activation or ospark.activation.ReLU()
@@ -37,7 +37,7 @@ class FeedForward(Layer):
     def normalization(self) -> Normalization:
         return self._normalization
 
-    def setting(self) -> NoReturn:
+    def initialize(self) -> NoReturn:
         self.assign(ospark.weight.truncated_normal(
                                 obj_name="mapping2high_dimensional", 
                                 weight_shape=[self.embedding_size, self.scale_rate * self.embedding_size]))
