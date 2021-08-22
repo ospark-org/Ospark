@@ -1,6 +1,6 @@
 from . import Layer
-from typing import NoReturn
-from ospark.nn.component.activation import  Activation
+from typing import NoReturn, Optional
+from ospark.nn.component.activation import Activation
 import tensorflow as tf
 import ospark
 
@@ -10,10 +10,10 @@ class DistillingLayer(Layer):
     def __init__(self, 
                  obj_name: str,
                  embedding_size: int,
-                 filter_width :int=None,
-                 pooling_size: list=None,
-                 strides :list=None,
-                 activation: Activation=None,
+                 filter_width: Optional[int]=None,
+                 pooling_size: Optional[list]=None,
+                 strides: Optional[list]=None,
+                 activation: Optional[Activation]=None,
                  pooling=None):
         super().__init__(obj_name=obj_name)
         self._embedding_size = embedding_size
@@ -47,7 +47,7 @@ class DistillingLayer(Layer):
     def pooling_size(self) -> list:
         return self._pooling_size
 
-    def setting(self) -> NoReturn:
+    def initialize(self) -> NoReturn:
         self.assign(component=ospark.weight.truncated_normal(obj_name="conv_filter",
                                                              weight_shape=[self.filter_width, 
                                                                            self.embedding_size, 

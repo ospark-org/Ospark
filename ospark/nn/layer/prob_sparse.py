@@ -70,6 +70,3 @@ class ProbSparse(SelfAttention):
 
     def create_mean_value(self, value: tf.Tensor) -> tf.Tensor:
         return tf.tile(tf.reduce_mean(value, axis=-2, keepdims=True), [1, 1, self.sequence_length, 1])
-
-    def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
-        return self.model(input_data)

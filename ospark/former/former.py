@@ -7,6 +7,7 @@ import ospark
 import numpy as np
 import tensorflow as tf
 
+
 class Former(BasicModule):
 
     def __init__(self,
@@ -110,5 +111,5 @@ class Former(BasicModule):
         return self.model(encoder_input, decoder_input)
 
     def __call__(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
-        output = self.forward(encoder_input=encoder_input, decoder_input=decoder_input)
+        output = self.forward(encoder_input, decoder_input)
         return output

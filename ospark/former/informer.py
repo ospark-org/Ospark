@@ -2,7 +2,7 @@ from ospark.former.former import Former
 from ospark.nn.block import Block
 from ospark.nn.block.informer_block import encoder_block, decoder_block
 from ospark.nn.component.normalization import Normalization
-from typing import List, NoReturn
+from typing import List, NoReturn, Optional
 import tensorflow as tf
 
 class Informer(Former):
@@ -12,14 +12,15 @@ class Informer(Former):
                  encoder_blocks: List[Block],
                  class_number: int,
                  embedding_size: int,
-                 decoder_blocks: List[Block] = [],
+                 use_graph_mode: bool=True,
+                 decoder_blocks: Optional[List[Block]]=None,
                  max_length: int = 2000,
-                 normalization: Normalization = None
                  ) -> NoReturn:
         super().__init__(obj_name=obj_name,
                          encoder_blocks=encoder_blocks,
                          class_number=class_number,
                          embedding_size=embedding_size,
+                         use_graph_mode=use_graph_mode,
                          decoder_blocks=decoder_blocks,
                          max_length=max_length)
 
@@ -45,7 +46,10 @@ class Informer(Former):
                     block_number: int,
                     embedding_size: int,
                     head_number: int,
+                    scale_rate: int,
                     sample_factor: float,
+                    use_decoder: bool=True,
+                    use_graph_mode: bool=True,
                     filter_width: int=None,
                     pooling_size: list=None,
                     strides: list=None):
@@ -53,10 +57,8 @@ class Informer(Former):
         decoder_blocks = []
         for i in range(block_number):
             encoder_name = f"encoder_block_{i}"
-            encoder_blocks.append(encoder_block(encoder_name, embedding_size, head_number, sample_factor, filter_width, pooling_size, strides))
-            decoder_name = f"decoder_block_{i}"
-            decoder_blocks.append(decoder_block(decoder_name, embedding_size, head_number, sample_factor))
-        return cls("Informer", encoder_blocks, class_number, embedding_size, decoder_blocks)
-
-    def __call__(self, encoder_input: tf.Tensor, decoder_input: tf.Tensor=None) -> tf.Tensor:
-        return self.model(encoder_input, decoder_input)
+            encoder_blocks.append(encoder_block(encoder_name, embedding_size, head_number, scale_rate, sample_factor, filter_width, pooling_size, strides))
+            if use_decoder:
+                decoder_name = f"decoder_block_{i}"
+                decoder_blocks.append(decoder_block(decoder_name, embedding_size, head_number, scale_rate, sample_factor))
+        return cls("Informer", encoder_blocks, class_number, embedding_size, use_graph_mode, decoder_blocks)
