@@ -1,6 +1,7 @@
 __version__ = "0.0.1"
 __name__ = "ospark"
 
+from ospark.nn.component.weight import Weight
 from ospark.nn.component import weight
 from ospark.nn.component import activation
 from ospark.nn.component import normalization

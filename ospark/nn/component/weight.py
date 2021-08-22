@@ -6,14 +6,12 @@ from typing import List, NoReturn
 class Weight:
 
     def __init__(self, 
-                 obj_name: str, 
-                 creator_func,
-                 weight_shape: list) -> NoReturn:
-        self._obj_name         = obj_name
-        self._indexed_name = None
-        self._value        = None
-        self._creator_func = creator_func
-        self.weight_shape  = weight_shape
+                 obj_name: str,
+                 initial_value: tf.Tensor) -> NoReturn:
+        self._obj_name      = obj_name
+        self._indexed_name  = None
+        self._value         = None
+        self._initial_value = initial_value
 
     @property
     def obj_name(self) -> str:
@@ -28,8 +26,8 @@ class Weight:
         return self._value
 
     @property
-    def creator_func(self):
-        return self._creator_func
+    def initial_value(self) -> tf.Tensor:
+        return self._initial_value
 
     def create(self, prefix_word: str) -> NoReturn:
         manager = WeightOperator()
@@ -37,7 +35,7 @@ class Weight:
         manager.add_weight(self)
         if self._value is None:
             print(f"Initialize weight {self.indexed_name}")
-            self._value = tf.Variable(self.creator_func(shape=self.weight_shape))
+            self._value = tf.Variable(self.initial_value)
 
     @property
     def get(self) -> NoReturn:
@@ -89,10 +87,16 @@ class WeightOperator:
 
 
 def truncated_normal(obj_name, weight_shape) -> Weight:
-    return Weight(obj_name, tf.random.truncated_normal, weight_shape)
+    return Weight(obj_name, tf.random.truncated_normal(weight_shape))
 
 def normal(obj_name, weight_shape) -> Weight:
-    return Weight(obj_name, tf.random.normal, weight_shape)
+    return Weight(obj_name, tf.random.normal(weight_shape))
 
 def uniform(obj_name, weight_shape) -> Weight:
-    return Weight(obj_name, tf.random.uniform, weight_shape)
+    return Weight(obj_name, tf.random.uniform(weight_shape))
+
+def ones(obj_name, weight_shape) -> Weight:
+    return Weight(obj_name, tf.ones(weight_shape))
+
+def zeros(obj_name, weight_shape) -> Weight:
+    return Weight(obj_name, tf.zeros(weight_shape))
