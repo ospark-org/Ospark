@@ -29,6 +29,6 @@ class ConfusionMatrix(Metrics):
             basic_matrix[index] = count
         print(basic_matrix)
         metrics["accuracy"]  = np.sum(np.diagonal(basic_matrix)) / np.sum(basic_matrix)
-        metrics["recall"]    = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=0)))
-        metrics["precision"] = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=1)))
+        metrics["recall"]    = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=1)))
+        metrics["precision"] = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=0)))
         return metrics
