@@ -38,24 +38,25 @@ class FeedForward(Layer):
         return self._normalization
 
     def initialize(self) -> NoReturn:
-        self.assign(ospark.weight.truncated_normal(
+        self.assign(component=ospark.weight.truncated_normal(
                                 obj_name="mapping2high_dimensional", 
                                 weight_shape=[self.embedding_size, self.scale_rate * self.embedding_size]))
-        self.assign(ospark.weight.truncated_normal(
+        self.assign(component=ospark.weight.truncated_normal(
                                 obj_name="mapping2low_dimensional", 
                                 weight_shape=[self.scale_rate * self.embedding_size, self.embedding_size]))
-        self.assign(ospark.weight.truncated_normal(
+        self.assign(component=ospark.weight.truncated_normal(
                                 obj_name="high_dimensional_bias",
                                 weight_shape=[self.scale_rate * self.embedding_size]))
-        self.assign(ospark.weight.truncated_normal(
+        self.assign(component=ospark.weight.truncated_normal(
                                 obj_name="low_dimensional_bias",
                                 weight_shape=[self.embedding_size]))
+        self.assign(component=self.normalization, name="norm")
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
         main_output = self.feedforward(input_data)
         residual_output = self.residual_net(input_data)
         added_residual = tf.add(main_output, residual_output)
-        normalization_output = self.normalization(added_residual)
+        normalization_output = self.assigned.norm(added_residual)
         return normalization_output
 
     def feedforward(self, input_data: tf.Tensor) -> tf.Tensor:

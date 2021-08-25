@@ -43,7 +43,7 @@ class Weight:
 
     def restore(self, weight: tf.Tensor) -> NoReturn:
         if weight is not None:
-            if all(tf.shape(weight) == tf.constant(self.weight_shape)):
+            if all(tf.shape(weight) == tf.shape(self.initial_value)):
                 self._value = tf.Variable(weight)
             else:
                 print(f"Weight \"{self.indexed_name}\", shape does not match the original setting, so use the initialization weight")

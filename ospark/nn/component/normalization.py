@@ -58,7 +58,7 @@ class LayerNormalization(Normalization):
         super().__init__(obj_name=obj_name or "layer_norm",
                          gamma_initializer=gamma_initializer,
                          beta_initializer=beta_initializer,
-                         Optional=epsilon)
+                         epsilon=epsilon)
 
     def calculate(self, input_data: tf.Tensor, axis: int=-1) -> tf.Tensor:
         mean, variance = tf.nn.moments(input_data, axes=[axis], keepdims=True)

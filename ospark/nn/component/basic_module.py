@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC
 from ospark.nn.component.weight import Weight
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, List
 
 
 class BasicModule(ABC):
@@ -34,13 +34,17 @@ class BasicModule(ABC):
 class Assigned:
 
     def __init__(self) -> NoReturn:
-        self.component_names = []
+        self._component_names = []
+
+    @property
+    def component_names(self) -> List[str]:
+        return self._component_names
 
     def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
         if name is None:
             name = component.obj_name
         setattr(self, name, component)
-        self.component_names.append(name)
+        self._component_names.append(name)
 
     def __getattr__(self, name):
         return self.__dict__[name]

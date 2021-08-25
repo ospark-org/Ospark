@@ -55,15 +55,15 @@ class ConvolutionLayer(Layer):
                      filter_size: List[int],
                      strides: List[int],
                      padding: str,
-                     ) -> ConvolutionLayer:
+                     trainable: bool) -> ConvolutionLayer:
         activation = ReLU()
-        normaliztion = BatchNormalization(input_depth=filter_size[-2])
+        normalization = BatchNormalization(input_depth=filter_size[-2], trainable=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,
                    padding=padding,
                    activation=activation,
-                   normalization=normaliztion,
+                   normalization=normalization,
                    layer_order=["norm", "activate", "conv"])
 
     @classmethod
@@ -72,15 +72,15 @@ class ConvolutionLayer(Layer):
                      filter_size: List[int],
                      strides: List[int],
                      padding: str,
-                     ) -> ConvolutionLayer:
+                     trainable: bool) -> ConvolutionLayer:
         activation = ReLU()
-        normaliztion = BatchNormalization(input_depth=filter_size[-2])
+        normalization = BatchNormalization(input_depth=filter_size[-2], trainable=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,
                    padding=padding,
                    activation=activation,
-                   normalization=normaliztion,
+                   normalization=normalization,
                    layer_order=["conv", "activate", "norm"])
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
@@ -91,19 +91,16 @@ class ConvolutionLayer(Layer):
 
     def initialize(self) -> NoReturn:
         self.assign(component=ospark.weight.truncated_normal(obj_name="filter", weight_shape=self.filter_size), name="filter")
-        self.assign(component=self.normalization, name="normalization")
+        self.assign(component=self.normalization, name="norm")
 
     def conv(self, input_data: tf.Tensor) -> tf.Tensor:
         output = tf.nn.conv2d(input=input_data, filters=self.assigned.filter, strides=self.strides, padding=self.padding)
         return output
 
     def norm(self, input_data: tf.Tensor) -> tf.Tensor:
-        output= self.assigned.normalization(input_data)
+        output= self.assigned.norm(input_data)
         return output
 
     def activate(self, input_data: tf.Tensor) -> tf.Tensor:
         output = self.activation(input_data)
         return output
-
-
-

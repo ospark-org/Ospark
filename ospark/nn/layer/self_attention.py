@@ -53,13 +53,14 @@ class SelfAttention(Layer):
                                 obj_name="output_weights",
                                 weight_shape=[self.embedding_size, self.embedding_size]
         ))
+        self.assign(component=self.normalization, name="norm")
 
     def model(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
         Q, K, V = self.QKV_process(input_data)
         main_output = self.attention_layer(Q, K, V, mask)
         residual_output = self.residual_net(input_data)
         added_residual = tf.add(main_output, residual_output)
-        layer_output = self.normalization(added_residual)
+        layer_output = self.assigned.norm(added_residual)
         return layer_output
 
     def QKV_process(self, input_data: tf.Tensor) -> Tuple[tf.Tensor]:
@@ -130,6 +131,7 @@ class EncoderDecoderAttention(SelfAttention):
                                 obj_name="output_weights",
                                 weight_shape=[self.embedding_size, self.embedding_size]
         ))
+        self.assign(component=self.normalization, name="norm")
 
     def QKV_process(self, input_data: tf.Tensor) -> Tuple[tf.Tensor]:
         encoder_output = tf.tile(self.encoder_output[:, tf.newaxis, tf.newaxis, :, :], [1, 2, 4, 1, 1])
