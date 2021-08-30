@@ -100,9 +100,6 @@ class Former(BasicModule):
     def model(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
         raise NotImplementedError()
 
-    def create(self) -> NoReturn:
-        super().create("model")
-
     @tf.function
     def graph_mode(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
         return self.model(encoder_input, decoder_input)

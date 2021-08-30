@@ -24,9 +24,12 @@ class BasicModule(ABC):
     def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
         self.assigned.assign(component, name)
 
-    def create(self, prefix_word: str) -> NoReturn:
+    def create(self, prefix_word: Optional[str]=None) -> NoReturn:
         self.initialize()
-        prefix_word += f"_{self.obj_name}"
+        if prefix_word is None:
+            prefix_word  = f"model_{self.obj_name}"
+        else:
+            prefix_word += f"_{self.obj_name}"
         for component in self.assigned:
             component.create(prefix_word)
 
