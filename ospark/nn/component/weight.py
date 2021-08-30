@@ -1,6 +1,6 @@
 from __future__ import annotations
 import tensorflow as tf 
-from typing import List, NoReturn
+from typing import List, NoReturn, Optional
 
 
 class Weight:
@@ -74,8 +74,15 @@ class WeightOperator:
         cls._restore_weight = weight
         
     @property
-    def collect(self) -> List[tf.Tensor]:
-        return [weight.value for weight in self.weights]
+    def collect(self, partition_name: Optional[str]=None) -> List[tf.Tensor]:
+        if partition_name is None:
+            return [weight.value for weight in self.weights]
+        else:
+            partition_weight = [weight.value for weight in self.weights if partition_name in weight.obj_name]
+            if partition_weight == []:
+                raise NameError(f"partition name {partition_name} is not exist, please check")
+            else:
+                return partition_weight
 
     @property
     def get(self) -> dict:
