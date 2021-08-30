@@ -67,26 +67,26 @@ class ConvolutionLayer(Layer):
                    layer_order=["norm", "activate", "conv"])
 
     @classmethod
-    def conv_relu_bn(cls,
+    def conv_bn_relu(cls,
                      obj_name: str,
                      filter_size: List[int],
                      strides: List[int],
                      padding: str,
                      trainable: bool) -> ConvolutionLayer:
         activation = ReLU()
-        normalization = BatchNormalization(input_depth=filter_size[-2], trainable=trainable)
+        normalization = BatchNormalization(input_depth=filter_size[-1], trainable=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,
                    padding=padding,
                    activation=activation,
                    normalization=normalization,
-                   layer_order=["conv", "activate", "norm"])
+                   layer_order=["conv", "norm", "activate"])
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
         for layer_name in self.layer_order:
-            output = self.__dict__[layer_name](output)
+            output = self.__getattribute__(layer_name)(output)
         return output
 
     def initialize(self) -> NoReturn:

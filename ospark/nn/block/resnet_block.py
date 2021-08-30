@@ -9,6 +9,7 @@ class ResnetBlock(Block):
     def __init__(self,
                  obj_name: str,
                  input_channel: int,
+                 main_channel: int,
                  scale_rate: Optional[int]=4,
                  kernel_size: Optional[int]=3,
                  strides: Optional[int]=1,
@@ -16,6 +17,7 @@ class ResnetBlock(Block):
                  trainable: Optional[bool]=True) -> NoReturn:
         super().__init__(obj_name=obj_name)
         self._input_channel  = input_channel
+        self._main_channel   = main_channel
         self._scale_rate     = scale_rate
         self._kernel_size    = kernel_size
         self._strides        = strides
@@ -25,6 +27,10 @@ class ResnetBlock(Block):
     @property
     def input_channel(self) -> int:
         return self._input_channel
+
+    @property
+    def main_channel(self) -> int:
+        return self._main_channel
 
     @property
     def scale_rate(self) -> int:
@@ -49,7 +55,10 @@ class ResnetBlock(Block):
     def initialize(self) -> NoReturn:
         if self.shortcut_conv:
             self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="shortcut_conv",
-                                                                filter_size=[1, 1, self.input_channel, self.scale_rate * self.input_channel],
+                                                                filter_size=[1,
+                                                                             1,
+                                                                             self.input_channel,
+                                                                             self.scale_rate * self.main_channel],
                                                                 strides=[1, self.strides, self.strides, 1],
                                                                 padding="SAME",
                                                                 trainable=self.trainable),
@@ -68,26 +77,38 @@ class Block1(ResnetBlock):
     def initialize(self) -> NoReturn:
         super().initialize()
         if self.shortcut_conv:
-            self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_1X1_0",
-                                                                filter_size=[1, 1, self.input_channel, self.input_channel],
+            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
+                                                                filter_size=[1,
+                                                                             1,
+                                                                             self.input_channel,
+                                                                             self.main_channel],
                                                                 strides=[1, self.strides, self.strides, 1],
                                                                 padding="SAME",
                                                                 trainable=self.trainable))
         else:
-            self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_1X1",
-                                                                filter_size=[1, 1, self.scale_rate * self.input_channel, self.input_channel],
+            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
+                                                                filter_size=[1,
+                                                                             1,
+                                                                             self.scale_rate * self.main_channel,
+                                                                             self.main_channel],
                                                                 strides=[1, self.strides, self.strides, 1],
                                                                 padding="SAME",
                                                                 trainable=self.trainable))
 
-        self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_3X3",
-                                                            filter_size=[self.kernel_size, self.kernel_size, self.input_channel, self.input_channel],
+        self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3",
+                                                            filter_size=[self.kernel_size,
+                                                                         self.kernel_size,
+                                                                         self.main_channel,
+                                                                         self.main_channel],
                                                             strides=[1, 1, 1, 1],
                                                             padding="SAME",
                                                             trainable=self.trainable))
-        self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_1X1_1",
-                                                            filter_size=[1, 1, self.input_channel, self.scale_rate * self.input_channel],
-                                                            strides=[1, self.strides, self.strides, 1],
+        self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_1",
+                                                            filter_size=[1,
+                                                                         1,
+                                                                         self.main_channel,
+                                                                         self.scale_rate * self.main_channel],
+                                                            strides=[1, 1, 1, 1],
                                                             padding="SAME",
                                                             trainable=self.trainable))
 
@@ -99,24 +120,33 @@ class Block1(ResnetBlock):
             output = layer(output)
         return output + shortcut
 
-class Block1(ResnetBlock):
+class Block2(ResnetBlock):
 
     def initialize(self) -> NoReturn:
         super().initialize()
         if self.shortcut_conv:
-            self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_3X3_0",
-                                                                filter_size=[3, 3, self.input_channel, self.input_channel],
+            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
+                                                                filter_size=[3,
+                                                                             3,
+                                                                             self.input_channel,
+                                                                             self.main_channel],
                                                                 strides=[1, self.strides, self.strides, 1],
                                                                 padding="SAME",
                                                                 trainable=self.trainable))
         else:
-            self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_3X3_0",
-                                                                filter_size=[3, 3, self.scale_rate * self.input_channel, self.input_channel],
+            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
+                                                                filter_size=[3,
+                                                                             3,
+                                                                             self.scale_rate * self.main_channel,
+                                                                             self.main_channel],
                                                                 strides=[1, self.strides, self.strides, 1],
                                                                 padding="SAME",
                                                                 trainable=self.trainable))
-        self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="layer_3X3_1",
-                                                            filter_size=[3, 3, self.input_channel, self.scale_rate * self.input_channel],
+        self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_1",
+                                                            filter_size=[3,
+                                                                         3,
+                                                                         self.main_channel,
+                                                                         self.scale_rate * self.main_channel],
                                                             strides=[1, 1, 1, 1],
                                                             padding="SAME",
                                                             trainable=self.trainable))
