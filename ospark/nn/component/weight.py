@@ -72,13 +72,12 @@ class WeightOperator:
     @classmethod
     def restore(cls, weight: dict) -> NoReturn:
         cls._restore_weight = weight
-        
-    @property
+
     def collect(self, partition_name: Optional[str]=None) -> List[tf.Tensor]:
         if partition_name is None:
             return [weight.value for weight in self.weights]
         else:
-            partition_weight = [weight.value for weight in self.weights if partition_name in weight.obj_name]
+            partition_weight = [weight.value for weight in self.weights if partition_name in weight.indexed_name]
             if partition_weight == []:
                 raise NameError(f"partition name {partition_name} is not exist, please check")
             else:
@@ -86,7 +85,7 @@ class WeightOperator:
 
     @property
     def get(self) -> dict:
-        return dict([weight.get for weight in self.weights])
+        return dict([weight.calculate_start for weight in self.weights])
 
     @classmethod
     def release_loaded_weight(cls) -> NoReturn:

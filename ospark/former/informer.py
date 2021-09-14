@@ -1,7 +1,5 @@
 from ospark.former.former import Former
 from ospark.nn.block import Block
-from ospark.nn.block.informer_block import encoder_block, decoder_block
-from ospark.nn.component.normalization import Normalization
 from typing import List, NoReturn, Optional
 import tensorflow as tf
 
@@ -39,26 +37,3 @@ class Informer(Former):
                 output = decoder_block(input_data=output, encoder_output=encoder_output)
         prediction = self.classifier(tf.matmul(output, self.classify_layer.value))
         return prediction * prediction_mask
-
-    @classmethod
-    def quick_build(cls,
-                    class_number: int,
-                    block_number: int,
-                    embedding_size: int,
-                    head_number: int,
-                    scale_rate: int,
-                    sample_factor: float,
-                    use_decoder: bool=True,
-                    use_graph_mode: bool=True,
-                    filter_width: int=None,
-                    pooling_size: list=None,
-                    strides: list=None):
-        encoder_blocks = []
-        decoder_blocks = []
-        for i in range(block_number):
-            encoder_name = f"encoder_block_{i}"
-            encoder_blocks.append(encoder_block(encoder_name, embedding_size, head_number, scale_rate, sample_factor, filter_width, pooling_size, strides))
-            if use_decoder:
-                decoder_name = f"decoder_block_{i}"
-                decoder_blocks.append(decoder_block(decoder_name, embedding_size, head_number, scale_rate, sample_factor))
-        return cls("Informer", encoder_blocks, class_number, embedding_size, use_graph_mode, decoder_blocks)

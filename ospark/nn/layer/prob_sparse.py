@@ -37,7 +37,7 @@ class ProbSparse(SelfAttention):
 
     def sampling(self, Q: tf.Tensor, K: tf.Tensor) -> tf.Tensor:
         batch, head_number, Q_sequence_length, embedding_size = tf.shape(Q)
-        _    ,           _, K_sequence_length,              _ =  tf.cast(tf.shape(K), dtype=tf.float32)
+        _    ,           _, K_sequence_length,              _ = tf.cast(tf.shape(K), dtype=tf.float32)
         self._sequence_length = Q_sequence_length
         sampling_number_U     = tf.cast(tf.math.ceil(self.sample_factor * tf.math.log(K_sequence_length)), dtype=tf.int32)
         sampling_number_u     = tf.cast(tf.math.ceil(self.sample_factor * tf.math.log(tf.cast(Q_sequence_length, dtype=tf.float32))), dtype=tf.int32)
@@ -47,8 +47,9 @@ class ProbSparse(SelfAttention):
         max_mean_measurement  = tf.reduce_max(sample_score, axis=-1) - tf.reduce_mean(sample_score, axis=-1)
         self._top_u           = tf.nn.top_k(max_mean_measurement, sampling_number_u, sorted=False).indices.numpy()
         Q_bar = Q.numpy()[np.arange(batch)[:, None, None],
-                        np.arange(head_number)[None, :, None],
-                        self.top_u, :]
+                          np.arange(head_number)[None, :, None],
+                          self.top_u,
+                          :]
         return Q_bar
 
     def attention(self, Q: tf.Tensor, K: tf.Tensor, V: tf.Tensor, mask: tf.Tensor=None) -> tf.Tensor:

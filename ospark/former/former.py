@@ -92,9 +92,9 @@ class Former(BasicModule):
         return tf.convert_to_tensor(basic_table, dtype=tf.float32)
 
     def positional_encoding(self, input_data: tf.Tensor, encodding_mask: tf.Tensor) -> tf.Tensor:
-        shape = input_data.shape
-        loolkup_index = tf.tile(tf.range(0, shape[1])[tf.newaxis, :], [shape[0], 1])
-        input_data += tf.nn.embedding_lookup(self.encoding_table, loolkup_index) * encodding_mask
+        shape        = input_data.shape
+        lookup_index = tf.tile(tf.range(0, shape[1])[tf.newaxis, :], [shape[0], 1])
+        input_data  += tf.nn.embedding_lookup(self.encoding_table, lookup_index) * encodding_mask
         return input_data
 
     def model(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:

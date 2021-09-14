@@ -14,11 +14,11 @@ class SelfAttention(Layer):
                  normalization: Optional[Normalization]=None,
                  look_ahead: bool=False) -> NoReturn:
         super().__init__(obj_name=obj_name)
-        self._embedding_size            = embedding_size
-        self._head_number               = head_number
-        self._look_ahead                = look_ahead
-        self._sequence_length           = None
-        self._normalization             = normalization or ospark.normalization.LayerNormalization()
+        self._embedding_size  = embedding_size
+        self._head_number     = head_number
+        self._look_ahead      = look_ahead
+        self._sequence_length = None
+        self._normalization   = normalization or ospark.normalization.LayerNormalization()
 
     @property
     def embedding_size(self) -> int:
@@ -44,7 +44,7 @@ class SelfAttention(Layer):
     def look_ahead_mask(self) -> tf.Tensor:
         return 1 - tf.linalg.band_part(tf.ones((self.sequence_length, self.sequence_length)), -1, 0)
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(ospark.weight.truncated_normal(
                                 obj_name="QKV_weights",
                                 weight_shape=[3, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]
@@ -118,7 +118,7 @@ class EncoderDecoderAttention(SelfAttention):
     def encoder_output(self) -> None:
         return self._encoder_output
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(ospark.weight.truncated_normal(
                                 obj_name="Q_weights",
                                 weight_shape=[1, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]

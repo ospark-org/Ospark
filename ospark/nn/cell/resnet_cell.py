@@ -62,7 +62,7 @@ class ResnetCell(Cell):
             blocks.append(block)
         return cls(obj_name=obj_name, blocks=blocks, trainable=trainable)
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         for block in self.blocks:
             self.assign(component=block)
 
@@ -73,7 +73,12 @@ class ResnetCell(Cell):
         return output
 
 
-def resnet_cells(cells_number: List[int], input_channels: List[int], main_channels: List[int], scale_rate: int, block_type: str, trainable: bool) -> List[ResnetCell]:
+def resnet_cells(cells_number: List[int],
+                 input_channels: List[int],
+                 main_channels: List[int],
+                 scale_rate: int,
+                 block_type: str,
+                 trainable: bool) -> List[ResnetCell]:
     cells = []
     for i, parameters in enumerate(zip(cells_number, input_channels, main_channels)):
         block_number, input_channel, main_channel = parameters

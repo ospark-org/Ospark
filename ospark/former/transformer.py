@@ -1,7 +1,6 @@
 from ospark.former.former import Former
 from ospark.nn.component.basic_module import BasicModule
 from ospark.nn.component.normalization import Normalization
-from ospark.nn.block.transformer_block import encoder_block, decoder_block
 from typing import List, NoReturn, Optional
 import tensorflow as tf
 import ospark
@@ -55,23 +54,3 @@ class Transformer(Former):
                 output = decoder_block(input_data=output, encoder_output=encoder_output, mask=padding_mask)
         prediction = self.classifier(tf.matmul(output, self.classify_layer.value))
         return prediction * prediction_mask
-
-    @classmethod
-    def quick_build(cls,
-                    block_number: int,
-                    head_number: int,
-                    embedding_size :int,
-                    scale_rate: int,
-                    class_number :int,
-                    max_length: int=2000,
-                    normalization: Optional[Normalization]=None,
-                    initial_norm: bool=False) -> Former:
-        encoder_blocks = []
-        decoder_blocks = []
-        for i in range(block_number):
-            encoder_name = f"encoder_block_{i}"
-            encoder_blocks.append(encoder_block(encoder_name, embedding_size, head_number, scale_rate))
-            decoder_name = f"decoder_block_{i}"
-            decoder_blocks.append((decoder_block(decoder_name, embedding_size, head_number, scale_rate)))
-        return cls(obj_name="Transformer", encoder_blocks=encoder_blocks, class_number=class_number, decoder_blocks=decoder_blocks,
-                   max_length=max_length, normalization=normalization, initial_norm=initial_norm, embedding_size=embedding_size)

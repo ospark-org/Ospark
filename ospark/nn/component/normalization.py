@@ -7,29 +7,30 @@ class Normalization(BasicModule):
 
     def __init__(self,
                  obj_name: str,
-                 gamma_initializer: Optional[float]=None,
-                 beta_initializer: Optional[float]=None,
+                 gamma: Optional[float]=None,
+                 beta: Optional[float]=None,
                  epsilon: Optional[float]=None):
         super().__init__(obj_name=obj_name)
-        self._gamma_initializer  = gamma_initializer or 1.
-        self._beta_initializer   = beta_initializer or 0.
-        self._epsilon            = epsilon or 0.0001
+        # gamme 不是 function 所以不會是 initializer
+        self._gamma   = gamma or 1.
+        self._beta    = beta or 0.
+        self._epsilon = epsilon or 0.0001
 
     @property
-    def gamma_initializer(self) -> tf.Tensor:
-        return self._gamma_initializer
+    def gamma(self) -> tf.Tensor:
+        return self._gamma
 
     @property
-    def beta_initializer(self) -> tf.Tensor:
-        return self._beta_initializer
+    def beta(self) -> tf.Tensor:
+        return self._beta
 
     @property
     def epsilon(self) -> tf.Tensor:
         return tf.constant(self._epsilon)
 
-    def initialize(self) -> NoReturn:
-        self.assign(component=ospark.Weight(obj_name="gamma", initial_value=self.gamma_initializer))
-        self.assign(component=ospark.Weight(obj_name="beta", initial_value=self.beta_initializer))
+    def on_creating(self) -> NoReturn:
+        self.assign(component=ospark.Weight(obj_name="gamma", initial_value=self.gamma))
+        self.assign(component=ospark.Weight(obj_name="beta", initial_value=self.beta))
 
     def __init_subclass__(cls) -> NoReturn:
         super().__init_subclass__()
@@ -52,12 +53,12 @@ class LayerNormalization(Normalization):
 
     def __init__(self,
                  obj_name: Optional[str]=None,
-                 gamma_initializer: Optional[float]=None,
-                 beta_initializer: Optional[float]=None,
+                 gamma: Optional[float]=None,
+                 beta: Optional[float]=None,
                  epsilon: Optional[float]=None):
         super().__init__(obj_name=obj_name or "layer_norm",
-                         gamma_initializer=gamma_initializer,
-                         beta_initializer=beta_initializer,
+                         gamma=gamma,
+                         beta=beta,
                          epsilon=epsilon)
 
     def calculate(self, input_data: tf.Tensor, axis: int=-1) -> tf.Tensor:
@@ -65,27 +66,28 @@ class LayerNormalization(Normalization):
         normalization_outputs = (input_data - mean) / (tf.sqrt(variance) + self.epsilon)
         return self.assigned.gamma * normalization_outputs + self.assigned.beta
 
+
 class BatchNormalization(Normalization):
 
     def __init__(self,
                  input_depth: tf.Tensor,
                  obj_name: str=None,
-                 gamma_initializer: Optional[float]=None,
-                 beta_initializer: Optional[float]=None,
+                 gamma: Optional[float]=None,
+                 beta: Optional[float]=None,
                  epsilon: Optional[float]=None,
                  momentum: Optional[float]=None,
-                 moving_mean_initializer: Optional[float]=None,
-                 moving_variance_initializer: Optional[float]=None,
+                 moving_mean: Optional[float]=None,
+                 moving_variance: Optional[float]=None,
                  trainable: bool=True):
         super(BatchNormalization, self).__init__(obj_name=obj_name or "batch_norm",
-                                                 gamma_initializer=gamma_initializer,
-                                                 beta_initializer=beta_initializer,
+                                                 gamma=gamma,
+                                                 beta=beta,
                                                  epsilon=epsilon)
-        self._input_depth                 = input_depth
-        self._momentum                    = momentum or 0.9
-        self._moving_mean_initializer     = moving_mean_initializer or 0.
-        self._moving_variance_initializer = moving_variance_initializer or 1.
-        self._calculate                   = self.train_process if trainable else self.infer_process
+        self._input_depth     = input_depth
+        self._momentum        = momentum or 0.9
+        self._moving_mean     = moving_mean or 0.
+        self._moving_variance = moving_variance or 1.
+        self._calculate       = self.train_process if trainable else self.inference_process
 
     @property
     def input_depth(self) -> tf.Tensor:
@@ -96,20 +98,20 @@ class BatchNormalization(Normalization):
         return tf.constant(self._momentum)
 
     @property
-    def moving_mean_initializer(self) -> tf.Tensor:
-        return tf.ones(shape=[self.input_depth]) * self._moving_mean_initializer
+    def moving_mean(self) -> tf.Tensor:
+        return tf.ones(shape=[self.input_depth]) * self._moving_mean
 
     @property
-    def moving_variance_initializer(self) -> tf.Tensor:
-        return tf.ones(shape=[self.input_depth]) * self._moving_variance_initializer
+    def moving_variance(self) -> tf.Tensor:
+        return tf.ones(shape=[self.input_depth]) * self._moving_variance
 
     def calculate(self, input_data: tf.Tensor) -> Callable[[tf.Tensor], tf.Tensor]:
         return self._calculate(input_data)
 
-    def initialize(self) -> NoReturn:
-        super().initialize()
-        self.assign(component=ospark.Weight(obj_name="moving_mean", initial_value=self.moving_mean_initializer))
-        self.assign(component=ospark.Weight(obj_name="moving_variance", initial_value=self.moving_variance_initializer))
+    def on_creating(self) -> NoReturn:
+        super().on_creating()
+        self.assign(component=ospark.Weight(obj_name="moving_mean", initial_value=self.moving_mean))
+        self.assign(component=ospark.Weight(obj_name="moving_variance", initial_value=self.moving_variance))
 
     def train_process(self, input_data: tf.Tensor) -> tf.Tensor:
         mean, variance = tf.nn.moments(x=input_data, axes=[0, 1, 2])
@@ -122,7 +124,7 @@ class BatchNormalization(Normalization):
                                          offset=self.assigned.beta,
                                          variance_epsilon=self.epsilon)
 
-    def infer_process(self, input_data: tf.Tensor) -> tf.Tensor:
+    def inference_process(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.batch_normalization(x=input_data,
                                          mean=self.assigned.moving_mean,
                                          variance=self.assigned.moving_variance,

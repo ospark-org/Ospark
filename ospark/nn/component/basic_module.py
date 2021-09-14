@@ -18,14 +18,14 @@ class BasicModule(ABC):
     def assigned(self) -> Assigned:
         return self._assigned
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         pass
 
     def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
         self.assigned.assign(component, name)
 
     def create(self, prefix_word: Optional[str]=None) -> NoReturn:
-        self.initialize()
+        self.on_creating()
         if prefix_word is None:
             prefix_word  = f"model_{self.obj_name}"
         else:

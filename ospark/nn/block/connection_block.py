@@ -2,7 +2,9 @@ from ospark.nn.block import Block
 from ospark.nn.layer import Layer
 from ospark.nn.layer.connection_layer import ConnectionLayer
 from typing import List, NoReturn
+from functools import reduce
 import tensorflow as tf
+
 
 class ConnectionBlock(Block):
 
@@ -16,19 +18,29 @@ class ConnectionBlock(Block):
     def connection_layers(self) -> List[Layer]:
         return self._connection_layers
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         for layer in self.connection_layers:
             self.assign(component=layer)
 
     def model(self, input_data: tf.Tensor, connection_input: List[tf.Tensor]) -> tf.Tensor:
-        output = input_data
-        for layer in self.connection_layers:
-            output = layer(output, connection_input.pop())
+        """
+
+        : input_data is 4-D Tensor [b, h, w, c]:
+        :param connection_input:
+        :return:
+        """
+
+        return reduce(
+            lambda output, layer: layer(output, connection_input.pop()),
+            self.connection_layers,
+            input_data)
+
+    def __call__(self, input_data: List[tf.Tensor]) -> tf.Tensor:
+        encoder_output = input_data.pop()
+        connection_input = input_data
+        output = self.model(input_data=encoder_output, connection_input=connection_input)
         return output
 
-    def __call__(self, input_data: tf.Tensor, connection_input: List[tf.Tensor]):
-        output = self.model(input_data=input_data, connection_input=connection_input)
-        return output
 
 def shared_convolution_decoder(input_channels: List[int], output_channels: List[int], trainable: bool) -> ConnectionBlock:
     connection_layers = []
@@ -42,4 +54,5 @@ def shared_convolution_decoder(input_channels: List[int], output_channels: List[
         connection_layers.append(connection_layer)
     decoder = ConnectionBlock(obj_name="shared_decoder", connection_layers=connection_layers)
     return decoder
+
 

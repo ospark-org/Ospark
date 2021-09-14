@@ -37,7 +37,7 @@ class FeedForward(Layer):
     def normalization(self) -> Normalization:
         return self._normalization
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(component=ospark.weight.truncated_normal(
                                 obj_name="mapping2high_dimensional", 
                                 weight_shape=[self.embedding_size, self.scale_rate * self.embedding_size]))

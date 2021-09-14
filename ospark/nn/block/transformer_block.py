@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Optional, NoReturn
+from typing import Optional, NoReturn, Callable, List
 from ospark.nn.layer.self_attention import SelfAttention, EncoderDecoderAttention
+from ospark.nn.layer.deep_attention import DeepAttention, DeepEncoderDecoder
 from ospark.nn.layer.feed_forward import FeedForward
+from ospark.nn.layer.deep_feed_forward import DeepFeedForward
 from . import Block
 import tensorflow as tf
 
@@ -36,7 +38,7 @@ class TransformerEncoderBlock(Block):
                    attention=attention_cls(obj_name="attention", embedding_size=embedding_size, head_number=head_number), 
                    feedforward=feedforward_cls(obj_name="feedforward", embedding_size=embedding_size, scale_rate=scale_rate))
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
         self.assign(name="feedforward", component=self.feedforward)
     
@@ -89,7 +91,7 @@ class TransformerDecoderBlock(Block):
                    encode_decode_attention=encode_decode_attention_cls(obj_name="encode_decode_attention", embedding_size=embedding_size, head_number=head_number),
                    feedforward=feedforward_cls(obj_name="feedforward", embedding_size=embedding_size, scale_rate=scale_rate))
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
         self.assign(name="encode_decode_attention", component=self.encode_decode_attention)
         self.assign(name="feedforward", component=self.feedforward)
@@ -107,7 +109,7 @@ class TransformerDecoderBlock(Block):
         return self.model(input_data, encoder_output, mask)
 
 
-def encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
+def transformer_encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
     attention = SelfAttention("attention", embedding_size=embedding_size, head_number=head_number)
     feedforward = FeedForward("feedforward", embedding_size=embedding_size, scale_rate=scale_rate)
     block = TransformerEncoderBlock(obj_name=obj_name, 
@@ -115,7 +117,7 @@ def encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_ra
                                     feedforward=feedforward)
     return block
 
-def decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
+def transformer_decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
     attention = SelfAttention("attention", embedding_size=embedding_size, head_number=head_number, look_ahead=True)
     encode_decode_attention = EncoderDecoderAttention("encode_decode_attention", embedding_size=embedding_size, head_number=head_number)
     feedforward = FeedForward("feedforward", embedding_size=embedding_size, scale_rate=scale_rate)
@@ -124,3 +126,35 @@ def decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_ra
                                     encode_decode_attention=encode_decode_attention,
                                     feedforward=feedforward)
     return block
+
+def exdeep_encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
+    attention = DeepAttention("deep_attention", embedding_size=embedding_size, head_number=head_number)
+    feedforwar = DeepFeedForward("deep_feedforward", embedding_size=embedding_size, scale_rate=scale_rate)
+    block = TransformerEncoderBlock(obj_name=obj_name,
+                                    attention=attention,
+                                    feedforward=feedforwar)
+    return block
+
+def exdeep_decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
+    attention = DeepAttention("deep_attention", embedding_size=embedding_size, head_number=head_number, look_ahead=True)
+    encode_decode_attention = DeepEncoderDecoder("encode_decode_attention", embedding_size=embedding_size, head_number=head_number)
+    feedforward = DeepFeedForward("feedforward", embedding_size=embedding_size, scale_rate=scale_rate)
+    block = TransformerDecoderBlock(obj_name=obj_name,
+                                    attention=attention,
+                                    encode_decode_attention=encode_decode_attention,
+                                    feedforward=feedforward)
+    return block
+
+def create_coder_blocks(block_number: int,
+                        create_func: Callable[[str, int, int, int], Block],
+                        embedding_size: int,
+                        head_number: int,
+                        scale_rate: int) -> List[Block]:
+    blocks = []
+    for i in range(block_number):
+        name = f"block_{i}"
+        blocks.append(create_func(obj_name=name,
+                                  embedding_size=embedding_size,
+                                  head_number=head_number,
+                                  scale_rate=scale_rate))
+    return blocks

@@ -17,7 +17,7 @@ class Cell(BasicModule):
         return output
 
     @abstractmethod
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         pass
 
     @classmethod

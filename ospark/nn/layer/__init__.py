@@ -7,7 +7,7 @@ class Layer(BasicModule):
     def __init__(self, obj_name: str) -> NoReturn:
         super().__init__(obj_name=obj_name)
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         raise NotImplementedError()
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:

@@ -46,7 +46,7 @@ class InformerEncoderBlock(Block):
                    feedforward=feedforward_cls(obj_name="feedforward", embedding_size=embedding_size, scale_rate=scale_rate),
                    distilling=distilling_cls(obj_name="distilling", embedding_size=embedding_size))
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(component=self.attention, name="attention")
         self.assign(component=self.feedforward, name="feedforward")
         self.assign(component=self.distilling, name="distilling")
@@ -87,7 +87,7 @@ class InformerDecoderBlock(Block):
     def feedforward(self) -> FeedForward:
         return self._feedforward
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(component=self.attention, name="attention")
         self.assign(component=self.encode_decode_attention, name="encode_decode_attention")
         self.assign(component=self.feedforward, name="feedforward")
@@ -104,7 +104,7 @@ class InformerDecoderBlock(Block):
     def __call__(self, input_data: tf.Tensor, encoder_output: tf.Tensor) -> tf.Tensor:
         return self.model(input_data, encoder_output)
 
-def encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int, sample_factor: float,
+def informer_encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int, sample_factor: float,
                   filter_width: int=None, pooling_size: list=None, strides: list=None) -> Block:
     attention   = ProbSparse("attention", embedding_size=embedding_size, head_number=head_number, sample_factor=sample_factor)
     feedforward = FeedForward("feedforward", embedding_size=embedding_size, scale_rate=scale_rate, activation=GELU())
@@ -115,7 +115,7 @@ def encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_ra
                                  distilling=distilling)
     return block
 
-def decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int, sample_factor: float) -> Block:
+def informer_decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int, sample_factor: float) -> Block:
     attention = ProbSparse("sparse_attention", embedding_size=embedding_size, head_number=head_number, sample_factor=sample_factor, look_ahead=True)
     encode_decode_attention = EncoderDecoderAttention("encode_decode_attention", embedding_size=embedding_size, head_number=head_number)
     feedforward = FeedForward("feedforward", embedding_size=embedding_size, scale_rate=scale_rate, activation=GELU())

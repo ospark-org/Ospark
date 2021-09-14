@@ -52,7 +52,7 @@ class ResnetBlock(Block):
     def trainable(self) -> bool:
         return self._trainable
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         if self.shortcut_conv:
             self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="shortcut_conv",
                                                                 filter_size=[1,
@@ -74,8 +74,8 @@ class ResnetBlock(Block):
 
 class Block1(ResnetBlock):
 
-    def initialize(self) -> NoReturn:
-        super().initialize()
+    def on_creating(self) -> NoReturn:
+        super().on_creating()
         if self.shortcut_conv:
             self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
                                                                 filter_size=[1,
@@ -122,8 +122,8 @@ class Block1(ResnetBlock):
 
 class Block2(ResnetBlock):
 
-    def initialize(self) -> NoReturn:
-        super().initialize()
+    def on_creating(self) -> NoReturn:
+        super().on_creating()
         if self.shortcut_conv:
             self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
                                                                 filter_size=[3,
