@@ -1,11 +1,11 @@
+import math
 from ospark.nn.model import Model
 from ospark.backbone.backbone import Backbone
 from ospark import Weight
-from typing import NoReturn, Optional, List
-from ospark.backbone.u_net import shared_convolution
+from typing import NoReturn, Optional, List, Tuple
+from ospark.backbone.u_net import Unet
 import tensorflow as tf
 import ospark
-from memory_profiler import profile
 
 
 class PixelWiseDetection(Model):
@@ -17,8 +17,8 @@ class PixelWiseDetection(Model):
                  padding: Optional[str]="SAME",
                  strides: Optional[List[int]]=[1, 1, 1, 1]):
         super().__init__(obj_name=obj_name,
-                         backbone=backbone,
                          classify_layer=classify_layer)
+        self._backbone       =backbone
         self._padding        = padding
         self._strides        = strides
 
@@ -30,18 +30,32 @@ class PixelWiseDetection(Model):
     def strides(self) -> List[int]:
         return self._strides
 
-    def initialize(self) -> NoReturn:
-        self.assign(component=self.backbone, name="backbone")
-        self.assign(component=self.classify_layer, name="classify_layer")
+    @property
+    def backbone(self) -> Backbone:
+        return self._backbone
 
-    @profile
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        output = self.assigned.backbone(input_data)
-        prediction = tf.nn.conv2d(output, self.assigned.classify_layer, strides=self.strides, padding=self.padding)
-        return prediction
+    def on_creating(self) -> NoReturn:
+        super().on_creating()
+        self.assign(component=self.backbone, name="backbone")
+
+    def model(self, input_data: tf.Tensor) -> Tuple[Tuple[tf.Tensor], tf.Tensor]:
+        feature_map = self.assigned.backbone(input_data)
+        prediction  = tf.nn.conv2d(feature_map, self.assigned.classify_layer, strides=self.strides, padding=self.padding)
+
+        score_map, bbox_map, angle_map = prediction[:, :, :, 0: 1], prediction[:, :, :, 1: 5], prediction[:, :, :, 5: 6]
+
+        bbox_map  = tf.nn.relu(bbox_map)
+        angle_map = (tf.nn.sigmoid(angle_map) - .5) * math.pi
+        return (score_map, bbox_map, angle_map), feature_map
+
+    @tf.function
+    def __ceil__(self, input_data: tf.Tensor) -> tf.Tensor:
+        prediction, feature_map = self.model(input_data=input_data)
+        return prediction, feature_map
+
 
 def fots_detection_model(trainable: bool):
-    backbone = shared_convolution(trainable=trainable)
+    backbone = Unet.build_shared_conv(trainable=trainable)
     classify_layer = ospark.weight.truncated_normal(obj_name="classify_layer",
                                                     weight_shape=[1, 1, 32, 6])
     model = PixelWiseDetection(obj_name="detection_model",
