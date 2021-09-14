@@ -6,27 +6,26 @@ class Backbone(BasicModule):
 
     def __init__(self,
                  obj_name: str,
-                 catch_output: Optional[bool]=False,
-                 trainable: Optional[bool]=True
-                 ):
+                 use_catch: Optional[bool]=False,
+                 trainable: Optional[bool]=True):
         super().__init__(obj_name=obj_name)
-        self._trainable          = trainable
-        self._catch_output       = catch_output
-        self._catch_box          = []
+        self._trainable = trainable
+        self._use_catch = use_catch
+        self._catch_box = []
 
     @property
     def trainable(self) -> bool:
         return self._trainable
 
     @property
-    def catch_output(self) -> bool:
-        return self._catch_output
+    def use_catch(self) -> bool:
+        return self._use_catch
 
     @property
     def catch_box(self) -> list:
         return self._catch_box
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         return NotImplementedError()
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:

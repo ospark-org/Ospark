@@ -5,39 +5,40 @@ from ospark.nn.cell.resnet_cell import resnet_cells
 from ospark.backbone.backbone import Backbone
 import tensorflow as tf
 
+
 class ResnetBackbone(Backbone):
 
     def __init__(self,
                  obj_name: str,
                  cells: List[ResnetCell],
-                 catch_output: bool,
-                 trainable: Optional[bool]=True
-                 ):
+                 use_catch: bool,
+                 trainable: Optional[bool]=True):
         super().__init__(obj_name=obj_name,
-                         catch_output=catch_output,
+                         use_catch=use_catch,
                          trainable=trainable)
-        self._cells              = cells
+        self._cells = cells
 
     @property
     def cells(self) -> List[ResnetCell]:
         return self._cells
 
-    def initialize(self) -> NoReturn:
-        for cell in self.cells:
-            self.assign(component=cell)
+    def on_creating(self) -> NoReturn:
         self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="first_conv",
                                                             filter_size=[7, 7, 3, 64],
                                                             strides=[1, 2, 2, 1],
                                                             padding="SAME",
                                                             trainable=self.trainable))
+        for cell in self.cells:
+            self.assign(component=cell)
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
         output = self.assigned.first_conv(input_data)
         output = tf.nn.max_pool2d(output, strides=2, ksize=3, padding="SAME")
-        for i, cell in enumerate(self.cells):
+        for cell in self.cells:
             output = cell(output)
-            if self.catch_output and i + 1 < len(self.cells):
+            if self.use_catch:
                 self._catch_box.append(output)
+        output = self.catch_box if self.use_catch else output
         return output
 
 
@@ -54,7 +55,7 @@ def resnet_50(trainable: bool, catch_output: bool) -> ResnetBackbone:
                                   trainable=trainable)
     backbone = ResnetBackbone(obj_name="resnet_50",
                               cells=cells,
-                              catch_output=catch_output,
+                              use_catch=catch_output,
                               trainable=trainable
                               )
     return backbone
@@ -73,7 +74,7 @@ def resnet_101(trainable: bool, catch_output: bool) -> ResnetBackbone:
                                   trainable=trainable)
     backbone = ResnetBackbone(obj_name="resnet_101",
                               cells=cells,
-                              catch_output=catch_output,
+                              use_catch=catch_output,
                               trainable=trainable
                               )
     return backbone
@@ -92,7 +93,7 @@ def resnet_152(trainable: bool, catch_output: bool) -> ResnetBackbone:
                                   trainable=trainable)
     backbone = ResnetBackbone(obj_name="resnet_152",
                               cells=cells,
-                              catch_output=catch_output,
+                              use_catch=catch_output,
                               trainable=trainable
                               )
     return backbone
@@ -111,7 +112,7 @@ def resnet_18(trainable: bool, catch_output: bool) -> ResnetBackbone:
                                   trainable=trainable)
     backbone = ResnetBackbone(obj_name="resnet_18",
                               cells=cells,
-                              catch_output=catch_output,
+                              use_catch=catch_output,
                               trainable=trainable
                               )
     return backbone
@@ -130,7 +131,7 @@ def resnet_34(trainable: bool, catch_output: bool) -> ResnetBackbone:
                                   trainable=trainable)
     backbone = ResnetBackbone(obj_name="resnet_34",
                               cells=cells,
-                              catch_output=catch_output,
+                              use_catch=catch_output,
                               trainable=trainable
                               )
     return backbone

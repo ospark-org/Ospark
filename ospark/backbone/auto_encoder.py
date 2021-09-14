@@ -22,7 +22,7 @@ class AutoEncoder(Backbone):
     def decoder(self) -> Block:
         return self._decoder
 
-    def initialize(self) -> NoReturn:
+    def on_creating(self) -> NoReturn:
         self.assign(component=self.encoder, name="encoder")
         self.assign(component=self.decoder, name="decoder")
 
