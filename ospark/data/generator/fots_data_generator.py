@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ospark.data.generator import DataGenerator
 from ospark.utility.padding_method import ImagePadding
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 from PIL import Image
 import tensorflow as tf
 import numpy as np
@@ -132,13 +132,13 @@ class FOTSDataGenerator(DataGenerator):
     def __iter__(self) -> FOTSDataGenerator:
         return self
 
-    def __next__(self):
+    def __next__(self) -> Tuple[tf.Tensor, tf.Tensor, List[List[str]], List[List[np.ndarray]]]:
         if self.step <= self.max_step:
             training_data, target_image, words, bbox_points = self.get_data()
             return training_data, target_image, words, bbox_points
         raise StopIteration()
 
-    def get_data(self):
+    def get_data(self) -> Tuple[tf.Tensor, tf.Tensor, List[List[str]], List[List[np.ndarray]]]:
         self._step += 1
         start_point = self.batch_size * self.step
         end_point   = min(len(self.training_data), start_point + self.batch_size)
@@ -150,7 +150,7 @@ class FOTSDataGenerator(DataGenerator):
         target_image, words, bbox_points = self.process_target_data(target_data_paths)
         return training_data, target_image, words, bbox_points
 
-    def process_training_data(self, paths: List[str]) -> np.ndarray:
+    def process_training_data(self, paths: List[str]) -> tf.Tensor:
         imgs = []
         for path in paths:
             img = Image.open(os.path.join(self.training_data_path, path))
@@ -169,7 +169,7 @@ class FOTSDataGenerator(DataGenerator):
             img = np.array(img)
         return img
 
-    def process_target_data(self, paths: List[str]):
+    def process_target_data(self, paths: List[str]) -> Tuple[tf.Tensor, List[List[str]], List[List[np.ndarray]]]:
         target_imgaes     = []
         total_words       = []
         total_bbox_points = []
@@ -201,15 +201,15 @@ class FOTSDataGenerator(DataGenerator):
         return new_points
 
     def create_detection_map(self, bbox_points: np.ndarray) -> np.ndarray:
-        shrunk_points = self.create_shrunk_points(bbox_points)
+        shrunk_points   = self.create_shrunk_points(bbox_points)
         score_map       = cv2.fillPoly(copy.copy(self.origin_image), [shrunk_points], 1)
         bbox_map, angle = self.create_bbox_map(score_map=score_map, bbox_points=bbox_points)
         angle_map       = angle * score_map
         return np.concatenate([score_map, bbox_map, angle_map], axis=-1)
 
-    def create_bbox_map(self, score_map: np.ndarray, bbox_points: np.ndarray):
+    def create_bbox_map(self, score_map: np.ndarray, bbox_points: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         score_map_position = score_map * self.position_matrix
-        a, b, c, angle = self.calculate_coefficient(bbox_points)
+        a, b, c, angle     = self.calculate_coefficient(bbox_points)
         distance = self.calculate_distance(position_matrix=score_map_position,
                                            coefficient_a=a,
                                            coefficient_b=b,
@@ -218,19 +218,23 @@ class FOTSDataGenerator(DataGenerator):
         distance = np.transpose(distance, [1, 2, 0]) * score_map
         return distance, angle
 
-    def calculate_coefficient(self, bbox_points: np.ndarray) -> np.ndarray:
+    def calculate_coefficient(self, bbox_points: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         linear function: y = ax + b
         """
         x     = bbox_points[[1, 2, 3, 0], 0] - bbox_points[[0, 1, 2, 3], 0] + 1e-9
         y     = bbox_points[[1, 2, 3, 0], 1] - bbox_points[[0, 1, 2, 3], 1]
         a     = y / x
-        b     = 1
+        b     = np.array(1)
         c     = bbox_points[[1, 2, 3, 0], 1] - a * bbox_points[[1, 2, 3, 0], 0]
         angle = self.calculate_angle(bbox_points[0], bbox_points[1])
         return -1 * a[:, np.newaxis, np.newaxis], b, -1 * c[:, np.newaxis, np.newaxis], angle
 
-    def calculate_distance(self, position_matrix: np.ndarray, coefficient_a: np.ndarray, coefficient_b: np.ndarray, coefficient_c: np.ndarray):
+    def calculate_distance(self,
+                           position_matrix: np.ndarray,
+                           coefficient_a: np.ndarray,
+                           coefficient_b: np.ndarray,
+                           coefficient_c: np.ndarray) -> np.ndarray:
         denominator = np.sqrt(np.power(coefficient_a, 2) + 1)
         numerator   = np.abs(coefficient_a * position_matrix[:, :, 0] + coefficient_b * position_matrix[:, :, 1] + coefficient_c)
         return numerator / denominator
@@ -247,7 +251,7 @@ class FOTSDataGenerator(DataGenerator):
         angle = np.arccos(x_partition / length) / coefficient
         return angle
 
-    def build_file_index(self, files: List[str]):
+    def build_file_index(self, files: List[str]) -> dict:
         files.sort()
         filtered_file = [string for string in files if any([char.isdigit() for char in string])]
         return {int("".join([file[i]

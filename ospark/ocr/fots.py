@@ -99,7 +99,7 @@ class FOTSTrainer(Trainer):
                    learning_rate=learning_rate,
                    corpus=corpus)
 
-    def start(self):
+    def start(self) -> NoReturn:
         self.detection_model.create()
         self.recognition_model.create()
         for i in range(self.epoch_number):
