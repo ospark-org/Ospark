@@ -7,7 +7,7 @@ import tensorflow as tf
 import ospark
 
 
-class FeedForward(Layer):
+class FeedForwardLayer(Layer):
 
     def __init__(self, 
                  obj_name: str, 

@@ -5,7 +5,7 @@ from ospark.nn.component.normalization import Normalization
 from typing import NoReturn, Tuple, Callable, Optional
 import ospark
 
-class SelfAttention(Layer):
+class SelfAttentionLayer(Layer):
 
     def __init__(self, 
                  obj_name: str, 
@@ -99,7 +99,7 @@ class SelfAttention(Layer):
             return self.model(input_data, mask)
         return model
 
-class EncoderDecoderAttention(SelfAttention):
+class EncoderDecoderAttentionLayer(SelfAttentionLayer):
 
     def __init__(self,
                  obj_name: str, 
