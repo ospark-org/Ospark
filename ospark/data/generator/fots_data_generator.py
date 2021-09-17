@@ -57,9 +57,9 @@ class FOTSDataGenerator(DataGenerator):
         self._target_image_size     = (np.array(image_size).astype(np.float32) * image_shrunk).astype(np.int32)
         self._origin_image          = np.zeros(shape=[self.target_image_size[1], self.target_image_size[0], 1])
         self._position_matrix       = self.create_position_matrix()
-        self._data_indices          = [i for i in range(len(training_file_name))]
         self._indexed_training_data = self.build_file_index(self.training_data)
         self._indexed_target_data   = self.build_file_index(self.target_data)
+        self._data_indices          = [i for i in self.indexed_training_data.keys()]
         self._use_shuffle           = use_shuffle
         if self.use_shuffle:
             random.shuffle(self._data_indices)
@@ -133,13 +133,14 @@ class FOTSDataGenerator(DataGenerator):
         return self
 
     def __next__(self) -> Tuple[tf.Tensor, tf.Tensor, List[List[str]], List[List[np.ndarray]]]:
-        if self.step <= self.max_step:
+        if self.step < self.max_step:
             training_data, target_image, words, bbox_points = self.get_data()
+            self._step += 1
             return training_data, target_image, words, bbox_points
+        self.reset()
         raise StopIteration()
 
     def get_data(self) -> Tuple[tf.Tensor, tf.Tensor, List[List[str]], List[List[np.ndarray]]]:
-        self._step += 1
         start_point = self.batch_size * self.step
         end_point   = min(len(self.training_data), start_point + self.batch_size)
         indices     = self.data_indices[start_point: end_point]
@@ -261,10 +262,12 @@ class FOTSDataGenerator(DataGenerator):
                                                    in file]) == True)[0]])): file
                 for file in filtered_file}
 
+
 if __name__ == "__main__":
     # 檢查結果是否正確，檢查 image size 需不需要前後對調，sorted file name, random sample, croups
-    training_data_folder = "/Users/abnertsai/Documents/ICDAR/ch4/ch4_training_images"
-    target_data_folder   = "/Users/abnertsai/Documents/ICDAR/ch4/ch4_training_localization_transcription_gt"
+
+    training_data_folder = "/Users/abnertsai/Documents/Ospark/ospark/samles/dataset/ICDAR/training_data"
+    target_data_folder   = "/Users/abnertsai/Documents/Ospark/ospark/samles/dataset/ICDAR/ch4_training_localization_transcription_gt"
     training_list = os.listdir(training_data_folder)
     target_list = os.listdir(target_data_folder)
     data_generator = FOTSDataGenerator(training_data_path=training_data_folder,
@@ -284,7 +287,7 @@ if __name__ == "__main__":
             # img.show()
             # tar_img = Image.fromarray(target_image[:,:,2] * 10)
             # tar_img.show()
-        break
+        # break
 
 
 
