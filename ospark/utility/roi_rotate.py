@@ -1,7 +1,6 @@
-from typing import List, NoReturn, Tuple, Callable
+from typing import List, NoReturn, Tuple, Callable, Union, Optional
 import tensorflow as tf
 from PIL import Image
-import copy
 
 
 class RoIRotate:
@@ -15,75 +14,106 @@ class RoIRotate:
         return self._batch_size
 
     @property
-    def target_height(self) -> int:
-        return self._target_height
+    def target_height(self) -> tf.Tensor:
+        return tf.constant(self._target_height)
 
     def start(self,
               images: tf.Tensor,
               bbox_points: tf.Tensor,
               target_words: List[List[str]]
-              ) -> Tuple[tf.Tensor, int, List[str], List[int]]:
-        total_words  = []
-        total_width  = []
-        total_images = []
-        for image, points, words in zip(images, bbox_points, target_words):
-            if points != []:
-                sub_images, width_size = list(zip(*map(self.process_image(image=image), points)))
-                total_words  += words
-                total_width  += width_size
-                total_images += sub_images
+              ) -> Tuple[tf.Tensor, int, List[str], List[tf.Tensor]]:
+        """
+        Start roi rotate.
 
-        images_number = len(total_images)
-        max_width     = tf.reduce_max(tf.convert_to_tensor(total_width), axis=0)
-        output_images = list(map(lambda para: self.padding_image(max_width=max_width)(*para),
-                                 zip(total_images, total_width)))
-        return tf.concat(output_images, axis=0), images_number, total_words, total_width
+        Args:
+        images: tf.Tensor
+            Input is images or feature maps, type is tensor.
+        bbox_points: tf.Tensor
+            Bounding box points, format is [[x1, y1],[x2, y2],[x3, y3],[x4, y4]].
+        target_words: List[List[str]]
+            Target word of each text box.
 
-    def process_image(self, image: tf.Tensor) -> Callable[[tf.Tensor], Tuple[tf.Tensor, tf.Tensor]]:
-        def extract_image(points: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-            crop_img, offset_width, offset_height, image_width, image_height = self.crop_image(image=image, points=points)
+        Returns:
+            feature_maps: tf.Tensor
+                Result of RoI rotate, feature map is text image.
+            textbox_number: int
+            words_stacked: List[str]
+                Stacked of all target words.
+            wrapped_widths: List[tf.Tensor]
+                Stacked of all textbox widths.
+        """
 
-            zoom_rate, width_size  = self.calculate_resize_scale(points=points)
-            target_position_matrix = self.create_position_matrix(height=self.target_height, width=width_size)
-            image_position_matrix  = self.create_position_matrix(height=image_height, width=image_width)
+        words_stacked = []
+        datasets      = []
+        _ = [
+            [datasets.extend(map(self.textbox_from(image=image), bounding_boxes_points)),
+            words_stacked.extend(words)]
+            for image, bounding_boxes_points, words in zip(images, bbox_points, target_words)
+            if bounding_boxes_points != []
+            ]
+
+        wrapped_widths = [dataset[1] for dataset in datasets]  # datasets is ((textbox, width), (textbox, width), ...)
+        max_width      = tf.reduce_max(tf.convert_to_tensor(wrapped_widths), axis=0)
+        textbox_number = len(datasets)
+        feature_maps   = tuple(map(self.padding_to(max_width=max_width), datasets))
+        feature_maps   = tf.concat(feature_maps, axis=0)
+        return feature_maps, textbox_number, words_stacked, wrapped_widths
+
+    def textbox_from(self, image: tf.Tensor) -> Callable[[tf.Tensor], Tuple[tf.Tensor, tf.Tensor]]:
+        """
+        Preload image.
+
+        Args:
+            image: tf.Tensor
+
+        Returns:
+            affine_transformation:  Callable[[tf.Tensor], Tuple[tf.Tensor, tf.Tensor]]
+        """
+        def _demarcated(bbox_points: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+            crop_img, offset_width, offset_height, image_width, image_height = self.crop_image(image=image, bbox_points=bbox_points)
+
+            zoom_rate, textbox_width  = self.calculate_resize_scale(points=bbox_points)
+            target_image_coordinate   = self.create_coordinate_matrix(image_height=self.target_height, image_width=textbox_width)
+            original_image_coordinate = self.create_coordinate_matrix(image_height=image_height, image_width=image_width)
 
             affine_matrix     = self.create_affine_matrix(zoom_rate=zoom_rate,
-                                                          points=points,
-                                                          left_top_point=[points[0, 1] - offset_height,
-                                                                          points[0, 0] - offset_width])
-            original_position = tf.matmul(target_position_matrix, tf.transpose(affine_matrix, [1, 0]))
-            sub_image         = self.roi_rotate(crop_img=crop_img,
-                                                original_position=original_position,
-                                                image_position_matrix=image_position_matrix,
-                                                width_size=width_size)
-            return sub_image, width_size
-        return extract_image
+                                                          bbox_points=bbox_points,
+                                                          left_top_point=[bbox_points[0, 1] - offset_height,
+                                                                          bbox_points[0, 0] - offset_width])
+            # Mapping to original coordinate.
+            mapping_coordinate = tf.matmul(target_image_coordinate, tf.transpose(affine_matrix, [1, 0]))
+            textbox           = self.roi_rotate(crop_img=crop_img,
+                                                mapping_coordinates=mapping_coordinate,
+                                                original_coordinate=original_image_coordinate,
+                                                textbox_width=textbox_width)
+            return textbox, textbox_width
+        return _demarcated
 
     def calculate_resize_scale(self, points: tf.Tensor):
         top_bound_length  = self.calculate_length(point_1=points[1, :], point_2=points[0, :])
         left_bound_length = self.calculate_length(point_1=points[3, :], point_2=points[0, :])
 
-        zoom_rate  = self.target_height / left_bound_length
-        width_size = tf.cast(tf.math.ceil(top_bound_length * zoom_rate), dtype=tf.int32)
-        return zoom_rate, width_size
+        zoom_rate     = tf.cast(self.target_height, dtype=tf.float32) / left_bound_length
+        textbox_width = tf.cast(tf.math.ceil(top_bound_length * zoom_rate), dtype=tf.int32)
+        return zoom_rate, textbox_width
 
     def create_affine_matrix(self,
                              zoom_rate: tf.float32,
-                             points: tf.Tensor,
+                             bbox_points: tf.Tensor,
                              left_top_point: List[int]) -> tf.Tensor:
-        angle = self.calculate_angle(start_point=points[0, :], end_point=points[1, :])
-        ty, tx = -1 * tf.cast(left_top_point, dtype=tf.float32)
-        matrix = zoom_rate * tf.convert_to_tensor([[tf.cos(angle), tf.sin(angle), (tx * tf.cos(angle)) + (ty * tf.sin(angle))],
-                                                   [-tf.sin(angle), tf.cos(angle), (ty * tf.cos(angle)) - (tx * tf.sin(angle))],
+        angle  = self.calculate_angle(start_point=bbox_points[0, :], end_point=bbox_points[1, :])
+        y_point, x_point = -1 * tf.cast(left_top_point, dtype=tf.float32)
+        affine_matrix = zoom_rate * tf.convert_to_tensor([[tf.cos(angle), tf.sin(angle), (x_point * tf.cos(angle)) + (y_point * tf.sin(angle))],
+                                                   [-tf.sin(angle), tf.cos(angle), (y_point * tf.cos(angle)) - (x_point * tf.sin(angle))],
                                                    [0, 0, 1 / zoom_rate]],
                                                   dtype=tf.float32)
-        inverse_matrix = tf.linalg.inv(matrix)
-        return inverse_matrix
+        affine_matrix = tf.linalg.inv(affine_matrix)
+        return affine_matrix
 
-    def create_position_matrix(self, height: int, width: int) -> tf.Tensor:
-        x_axes = tf.tile(tf.range(1, width + 1, dtype=tf.float32)[tf.newaxis, :, tf.newaxis], [height, 1, 1])
-        y_axes = tf.tile(tf.range(1, height + 1, dtype=tf.float32)[:, tf.newaxis, tf.newaxis], [1, width, 1])
-        z_axes = tf.ones(shape=[height, width, 1], dtype=tf.float32)
+    def create_coordinate_matrix(self, image_height: Union[int, tf.Tensor], image_width: Union[int, tf.Tensor]) -> tf.Tensor:
+        x_axes = tf.tile(tf.range(1, image_width + 1, dtype=tf.float32)[tf.newaxis, :, tf.newaxis], [image_height, 1, 1])
+        y_axes = tf.tile(tf.range(1, image_height + 1, dtype=tf.float32)[:, tf.newaxis, tf.newaxis], [1, image_width, 1])
+        z_axes = tf.ones(shape=[image_height, image_width, 1], dtype=tf.float32)
         return tf.concat([x_axes, y_axes, z_axes], axis=-1)
 
     def calculate_length(self, point_1: tf.Tensor, point_2: tf.Tensor) -> tf.Tensor:
@@ -92,24 +122,38 @@ class RoIRotate:
     def calculate_angle(self,
                         start_point: tf.Tensor,
                         end_point: tf.Tensor,
-                        axis: str="x") -> tf.Tensor:
+                        axis: Optional[str]="x") -> tf.Tensor:
+        """
+        Calculate the angle between the line segment and the x or y axis.
+
+        Args:
+            start_point: tf.Tensor
+            end_point: tf.Tensor
+            axis: Optional[str]="x"
+                It is optional x or y, default is x axis.
+
+        Returns:
+            angle: tf.Tensor
+                Angle of line segment.
+        """
         vector = tf.cast(end_point - start_point, dtype=tf.float32)
         length = tf.linalg.norm(vector)
 
         x_partition, y_partition = vector
-        angle = tf.Tensor
         if axis == "x":
             angle = tf.acos(x_partition / length) / tf.cond(y_partition >= 0, lambda: 1, lambda: -1)
         elif axis == "y":
             angle = tf.acos(y_partition / length) / tf.cond(x_partition >= 0, lambda: 1, lambda: -1)
+        else:
+            raise KeyError(f"Undefined axis {axis}, place use \"x\" or \"y\" axis.")
         return angle
 
     def crop_image(self,
                    image: tf.Tensor,
-                   points: tf.Tensor
+                   bbox_points: tf.Tensor
                    ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-        max_point = tf.cast(tf.reduce_max(points, axis=0), tf.int32)
-        min_point = tf.cast(tf.reduce_min(points, axis=0), tf.int32)
+        max_point = tf.cast(tf.reduce_max(bbox_points, axis=0), tf.int32)
+        min_point = tf.cast(tf.reduce_min(bbox_points, axis=0), tf.int32)
         offset_width, offset_height = min_point[0], min_point[1]
         target_width, target_height = max_point[0] - min_point[0], max_point[1] - min_point[1]
         crop_img = tf.cast(tf.image.crop_to_bounding_box(image=image,
@@ -121,27 +165,29 @@ class RoIRotate:
 
     def roi_rotate(self,
                    crop_img: tf.Tensor,
-                   original_position: tf.Tensor,
-                   image_position_matrix: tf.Tensor,
-                   width_size: tf.Tensor) -> tf.Tensor:
-        total_value = []
-        for position in tf.reshape(original_position, [-1, 3]):
-            scale_rate = tf.math.maximum(0, 1 - tf.abs(image_position_matrix - position))
+                   mapping_coordinates: tf.Tensor,
+                   original_coordinate: tf.Tensor,
+                   textbox_width: tf.Tensor) -> tf.Tensor:
+        value_stacked = []
+        for mapping_coordinate in tf.reshape(mapping_coordinates, [-1, 3]):
+            scale_rate = tf.math.maximum(0, 1 - tf.abs(original_coordinate - mapping_coordinate))
             x_scale_rate, y_scale_rate, _ = tf.split(scale_rate, 3, axis=-1)
-            bi_linear_value = tf.reduce_sum(tf.reduce_sum(crop_img * x_scale_rate, axis=1) * y_scale_rate[:, 0], axis=0)
-            total_value.append(bi_linear_value)
+            bilinear_interpolation = tf.reduce_sum(tf.reduce_sum(crop_img * x_scale_rate, axis=1) * y_scale_rate[:, 0], axis=0)
+            value_stacked.append(bilinear_interpolation)
         del crop_img
-        sub_image = tf.reshape(total_value, [self.target_height, width_size, -1])
-        return sub_image
+        textbox = tf.reshape(value_stacked, [self.target_height, textbox_width, -1])
+        return textbox
 
-    def padding_image(self, max_width: tf.int32) -> Callable[[tf.Tensor, tf.Tensor], tf.Tensor]:
-        def pad(image: tf.Tensor, image_width: tf.Tensor) -> tf.Tensor:
-            img = tf.pad(image[tf.newaxis, :, :, :], paddings=[[0, 0],
-                                                               [0, 0],
-                                                               [0, max_width - image_width],
-                                                               [0, 0]])
-            return img
-        return pad
+    def padding_to(self, max_width: tf.int32) -> Callable[[Tuple[tf.Tensor, tf.Tensor]], tf.Tensor]:
+        def zero_padded(dataset: Tuple[tf.Tensor, tf.Tensor]) -> tf.Tensor:
+            textbox, textbox_width = dataset
+
+            padded_textbox = tf.pad(textbox[tf.newaxis, :, :, :], paddings=[[0, 0],
+                                                                            [0, 0],
+                                                                            [0, max_width - textbox_width],
+                                                                            [0, 0]])
+            return padded_textbox
+        return zero_padded
 
 
 if __name__ == "__main__":

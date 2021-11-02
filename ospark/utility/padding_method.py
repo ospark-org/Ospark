@@ -3,8 +3,6 @@ from typing import Optional
 import numpy as np
 
 
-# Align
-# upper lower 合併
 class PaddingMethod(Enum):
 
     align_image_center = lambda image, pad_height, pad_width:\
@@ -29,7 +27,7 @@ class PaddingMethod(Enum):
                                                 [0, 0]]).astype(np.int32))
 
 
-class ImagePadding:
+class PaddingManager:
 
     def __init__(self, padding_method: Optional[str]=None):
         """
@@ -39,7 +37,7 @@ class ImagePadding:
              padding_method: Optional[str]
                 Method has center, upper_left, upper_right, lower_left, lower_right. Default use "center".
         """
-        if padding_method == "center":
+        if padding_method == "center" or padding_method is None:
             self._padding = lambda height, width: np.array([[np.ceil(height / 2), np.floor(height / 2)],
                                                             [np.ceil(width / 2), np.floor(width / 2)],
                                                             [0, 0]]).astype(np.int32)
