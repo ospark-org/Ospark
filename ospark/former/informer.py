@@ -10,7 +10,6 @@ class Informer(Former):
                  encoder_blocks: List[Block],
                  class_number: int,
                  embedding_size: int,
-                 use_graph_mode: bool=True,
                  decoder_blocks: Optional[List[Block]]=None,
                  max_length: int = 2000,
                  ) -> NoReturn:
@@ -18,7 +17,6 @@ class Informer(Former):
                          encoder_blocks=encoder_blocks,
                          class_number=class_number,
                          embedding_size=embedding_size,
-                         use_graph_mode=use_graph_mode,
                          decoder_blocks=decoder_blocks,
                          max_length=max_length)
 

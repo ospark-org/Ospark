@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC
 from ospark.nn.component.weight import Weight
-from typing import NoReturn, Optional, List
+from typing import NoReturn, Optional, List, Union
 
 
 class BasicModule(ABC):
@@ -21,7 +21,7 @@ class BasicModule(ABC):
     def on_creating(self) -> NoReturn:
         pass
 
-    def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
+    def assign(self, component: Union[BasicModule, Weight], name: Optional[str]=None) -> NoReturn:
         self.assigned.assign(component, name)
 
     def create(self, prefix_word: Optional[str]=None) -> NoReturn:

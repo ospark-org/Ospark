@@ -1,24 +1,22 @@
-from ospark.nn.layer.self_attention import SelfAttention
+from ospark.nn.layer.self_attention import SelfAttentionLayer
 import tensorflow as tf
 import numpy as np
 from ospark.nn.component.normalization import Normalization
 from typing import NoReturn, Tuple
 
 
-class ProbSparse(SelfAttention):
+class ProbSparseAttentionLayer(SelfAttentionLayer):
 
     def __init__(self,
                  obj_name: str,
                  embedding_size: int,
                  head_number: int,
                  sample_factor: float,
-                 normalization: Normalization=None,
-                 look_ahead: bool=False) -> NoReturn:
+                 normalization: Normalization=None) -> NoReturn:
         super().__init__(obj_name=obj_name,
                          embedding_size=embedding_size,
                          head_number=head_number,
-                         normalization=normalization,
-                         look_ahead=look_ahead)
+                         normalization=normalization)
         self._sample_factor = sample_factor
         self._top_u         = None
 
@@ -29,9 +27,12 @@ class ProbSparse(SelfAttention):
     @property
     def top_u(self) -> None:
         return self._top_u
-
-    def QKV_process(self, input_data: tf.Tensor) -> Tuple[tf.Tensor]:
-        Q, K, V = super().QKV_process(input_data)
+    def QKV_process(self,
+                    Q_input: tf.Tensor,
+                    K_input: tf.Tensor,
+                    V_input: tf.Tensor,
+                    batch_size: tf.int32) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        Q, K, V = super().QKV_process(Q_input=Q_input, K_input=K_input, V_input=V_input)
         Q_bar = self.sampling(Q, K)
         return Q_bar, K, V
 
@@ -56,11 +57,10 @@ class ProbSparse(SelfAttention):
         batch, head_number, V_sequence_length, embedding_size = tf.shape(V)
         K = tf.transpose(K, [0, 1, 3, 2])
         scaled_dot_product = tf.matmul(Q, K) / tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
-        if self.look_ahead:
-            look_ahead_mask = tf.tile(self.look_ahead_mask[tf.newaxis, tf.newaxis, :, :], [batch, head_number, 1, 1]).numpy()
-            scaled_dot_product += (look_ahead_mask[np.arange(batch)[:, None, None],
-                                                   np.arange(head_number)[None, :, None],
-                                                   self.top_u, :] * -1e9)
+        if mask is not None:
+            scaled_dot_product += (mask[np.arange(batch)[:, None, None],
+                                        np.arange(head_number)[None, :, None],
+                                        self.top_u, :] * -1e9)
         mean_V = self.create_mean_value(V)
         scaled_dot_product = tf.nn.softmax(scaled_dot_product)
         mean_V.numpy()[np.arange(batch)[:, None, None],

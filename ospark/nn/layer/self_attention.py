@@ -11,14 +11,19 @@ class SelfAttentionLayer(Layer):
                  obj_name: str, 
                  embedding_size: int, 
                  head_number: int, 
-                 normalization: Optional[Normalization]=None,
-                 look_ahead: bool=False) -> NoReturn:
+                 normalization: Optional[Normalization]=None) -> NoReturn:
         super().__init__(obj_name=obj_name)
+        assert embedding_size % head_number == 0
+
+        self._depth           = embedding_size // head_number
         self._embedding_size  = embedding_size
         self._head_number     = head_number
-        self._look_ahead      = look_ahead
         self._sequence_length = None
-        self._normalization   = normalization or ospark.normalization.LayerNormalization()
+        self._normalization   = normalization or ospark.normalization.LayerNormalization(layer_dimension=embedding_size)
+
+    @property
+    def depth(self) -> int:
+        return self._depth
 
     @property
     def embedding_size(self) -> int:
@@ -33,10 +38,6 @@ class SelfAttentionLayer(Layer):
         return self._normalization
 
     @property
-    def look_ahead(self) -> bool:
-        return self._look_ahead
-
-    @property
     def sequence_length(self) -> None:
         return self._sequence_length
 
@@ -45,50 +46,92 @@ class SelfAttentionLayer(Layer):
         return 1 - tf.linalg.band_part(tf.ones((self.sequence_length, self.sequence_length)), -1, 0)
 
     def on_creating(self) -> NoReturn:
-        self.assign(ospark.weight.truncated_normal(
-                                obj_name="QKV_weights",
-                                weight_shape=[3, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]
+        self.assign(ospark.weight.glorot_uniform(
+            obj_name="Q_weights",
+            weight_shape=[self.embedding_size, self.embedding_size]
         ))
-        self.assign(ospark.weight.truncated_normal(
-                                obj_name="output_weights",
-                                weight_shape=[self.embedding_size, self.embedding_size]
+        self.assign(ospark.weight.glorot_uniform(
+            obj_name="K_weights",
+            weight_shape=[self.embedding_size, self.embedding_size]
+        ))
+        self.assign(ospark.weight.glorot_uniform(
+            obj_name="V_weights",
+            weight_shape=[self.embedding_size, self.embedding_size]
+        ))
+        self.assign(ospark.weight.glorot_uniform(
+            obj_name="output_weights",
+            weight_shape=[self.embedding_size, self.embedding_size]
+        ))
+        self.assign(ospark.weight.zeros(
+            obj_name="Q_bias",
+            weight_shape=[self.embedding_size]
+        ))
+        self.assign(ospark.weight.zeros(
+            obj_name="K_bias",
+            weight_shape=[self.embedding_size]
+        ))
+        self.assign(ospark.weight.zeros(
+            obj_name="V_bias",
+            weight_shape=[self.embedding_size]
+        ))
+        self.assign(ospark.weight.zeros(
+            obj_name="output_bias",
+            weight_shape=[self.embedding_size]
         ))
         self.assign(component=self.normalization, name="norm")
 
-    def model(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
-        Q, K, V = self.QKV_process(input_data)
-        main_output = self.attention_layer(Q, K, V, mask)
-        residual_output = self.residual_net(input_data)
+    def model(self, input_data: Tuple[tf.Tensor, tf.Tensor, tf.Tensor], mask: Optional[tf.Tensor]=None) -> tf.Tensor:
+        batch_size = tf.shape(input_data[0])[0]
+        Q_input, K_input, V_input = input_data
+        Q, K, V = self.QKV_process(Q_input=Q_input, K_input=K_input, V_input=V_input, batch_size=batch_size)
+        main_output = self.attention_layer(Q=Q, K=K, V=V, batch_size=batch_size, mask=mask)
+        residual_output = self.residual_net(input_data=Q_input)
         added_residual = tf.add(main_output, residual_output)
         layer_output = self.assigned.norm(added_residual)
         return layer_output
 
-    def QKV_process(self, input_data: tf.Tensor) -> Tuple[tf.Tensor]:
-        input_data = tf.tile(input_data[:, tf.newaxis, tf.newaxis, :, :], [1, 3, self.head_number, 1, 1])
-        QKV = tf.matmul(input_data, self.assigned.QKV_weights)
-        Q, K, V = tf.unstack(QKV, num=3, axis=1)
+    def QKV_process(self,
+                    Q_input: tf.Tensor,
+                    K_input: tf.Tensor,
+                    V_input: tf.Tensor,
+                    batch_size: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        Q = tf.matmul(Q_input, self.assigned.Q_weights) + self.assigned.Q_bias  # [batch, seq, d_model]
+        K = tf.matmul(K_input, self.assigned.K_weights) + self.assigned.K_bias
+        V = tf.matmul(V_input, self.assigned.V_weights) + self.assigned.V_bias
+        Q = self.split_head(input_data=Q, batch_size=batch_size) # [batch, head_number, seq, depth]
+        K = self.split_head(input_data=K, batch_size=batch_size)
+        V = self.split_head(input_data=V, batch_size=batch_size)
         return Q, K, V
+
+    def split_head(self, input_data: tf.Tensor, batch_size: tf.int32) -> tf.Tensor:
+        split_result     = tf.reshape(input_data, [batch_size, -1, self.head_number, self.depth]) # [batch, seq, head_number, depth]
+        transpose_result = tf.transpose(split_result, [0, 2, 1, 3]) # [batch, head_number, seq, depth]
+        return transpose_result
 
     def attention_layer(self, 
                         Q: tf.Tensor, 
                         K: tf.Tensor, 
-                        V: tf.Tensor, 
+                        V: tf.Tensor,
+                        batch_size: tf.Tensor,
                         mask: Optional[tf.Tensor]=None) -> tf.Tensor:
-        attention_value = self.attention(Q, K, V, mask)
-        layer_output = tf.matmul(attention_value, self.assigned.output_weights)
+        attention_value = self.attention(Q=Q, K=K, V=V, batch_size=batch_size, mask=mask)
+        layer_output = tf.matmul(attention_value, self.assigned.output_weights) + self.assigned.output_bias
         return layer_output
 
-    def attention(self, Q: tf.Tensor, K: tf.Tensor, V: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
+    def attention(self,
+                  Q: tf.Tensor,
+                  K: tf.Tensor,
+                  V: tf.Tensor,
+                  batch_size: tf.Tensor,
+                  mask: Optional[tf.Tensor]=None) -> tf.Tensor:
         K = tf.transpose(K, [0, 1, 3, 2])
         scaled_dot_product = tf.matmul(Q, K) / tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
-        if self.look_ahead:
-            self._sequence_length = tf.shape(Q)[-2]
-            scaled_dot_product += (self.look_ahead_mask * -1e9)
         if mask is not None:
             scaled_dot_product += (mask * -1e9)
-        scaled_dot_product = tf.nn.softmax(scaled_dot_product)
-        output = tf.matmul(scaled_dot_product, V)
-        concat_output = tf.concat(tf.unstack(output, self.head_number, axis=1), axis=2)
+        scaled_dot_product = tf.nn.softmax(scaled_dot_product, axis=-1)
+        scaled_attention   = tf.matmul(scaled_dot_product, V)
+        scaled_attention   = tf.transpose(scaled_attention, [0, 2, 1, 3]) # [batch, seq, head_number, d_model]
+        concat_output      = tf.reshape(scaled_attention, [batch_size, -1, self.embedding_size])
         return concat_output
 
     def residual_net(self, input_data: tf.Tensor) -> tf.Tensor:
@@ -96,7 +139,7 @@ class SelfAttentionLayer(Layer):
 
     def __call__(self, mask: Optional[tf.Tensor]=None) -> Callable[[tf.Tensor], tf.Tensor]:
         def model(input_data: tf.Tensor) -> tf.Tensor:
-            return self.model(input_data, mask)
+            return self.model((input_data, input_data, input_data), mask)
         return model
 
 class EncoderDecoderAttentionLayer(SelfAttentionLayer):
@@ -105,45 +148,13 @@ class EncoderDecoderAttentionLayer(SelfAttentionLayer):
                  obj_name: str, 
                  embedding_size: int, 
                  head_number: int, 
-                 normalization: Optional[Normalization]=None,
-                 look_ahead: bool=False) -> NoReturn:
+                 normalization: Optional[Normalization]=None) -> NoReturn:
         super().__init__(obj_name=obj_name, 
                          embedding_size=embedding_size, 
                          head_number=head_number, 
-                         normalization=normalization,
-                         look_ahead=look_ahead)
-        self._encoder_output = None
-
-    @property
-    def encoder_output(self) -> None:
-        return self._encoder_output
-
-    def on_creating(self) -> NoReturn:
-        self.assign(ospark.weight.truncated_normal(
-                                obj_name="Q_weights",
-                                weight_shape=[1, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]
-        ))
-        self.assign(ospark.weight.truncated_normal(
-                                obj_name="KV_weights",
-                                weight_shape=[2, self.head_number, self.embedding_size, int(self.embedding_size / self.head_number)]
-        ))
-        self.assign(ospark.weight.truncated_normal(
-                                obj_name="output_weights",
-                                weight_shape=[self.embedding_size, self.embedding_size]
-        ))
-        self.assign(component=self.normalization, name="norm")
-
-    def QKV_process(self, input_data: tf.Tensor) -> Tuple[tf.Tensor]:
-        encoder_output = tf.tile(self.encoder_output[:, tf.newaxis, tf.newaxis, :, :], [1, 2, 4, 1, 1])
-        input_data = tf.tile(input_data[:, tf.newaxis, :, :], [1, 4, 1, 1])
-        Q    = tf.matmul(input_data, self.assigned.Q_weights)
-        KV   = tf.matmul(encoder_output, self.assigned.KV_weights)
-        K, V = tf.unstack(KV, num=2, axis=1)
-        return Q, K, V
+                         normalization=normalization)
 
     def __call__(self, mask: tf.Tensor, encoder_output: tf.Tensor) -> Callable[[tf.Tensor], tf.Tensor]:
-        mask = tf.cast(tf.math.equal(encoder_output[:, :, 0], 0), tf.float32)[:, tf.newaxis, tf.newaxis, :]
         def model(input_data: tf.Tensor) -> tf.Tensor:
-            self._encoder_output = encoder_output
-            return self.model(input_data, mask)
+            return self.model((input_data, encoder_output, encoder_output), mask)
         return model

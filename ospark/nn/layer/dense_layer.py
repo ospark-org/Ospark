@@ -35,10 +35,13 @@ class DenseLayer(Layer):
                 input_dimension = self.hidden_dimension[i - 1]
             name = f"layer_{i}"
             self._layers_name.append(name)
-            weight = ospark.weight.truncated_normal(obj_name=name, weight_shape=[input_dimension, output_dimension])
+            weight = ospark.weight.glorot_uniform(obj_name=name, weight_shape=[input_dimension, output_dimension])
+            bias   = ospark.weight.zeros(obj_name=name+"_bias", weight_shape=[output_dimension])
             self.assign(component=weight)
+            self.assign(component=bias)
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        layers = [self.assigned.__getattribute__(name=name) for name in self.layers_name]
-        output = reduce(lambda output, weight: tf.matmul(output, weight), layers, input_data)
+        layers = [(self.assigned.__getattribute__(name=name), self.assigned.__getattribute__(name=name + "_bias"))
+                  for name in self.layers_name]
+        output = reduce(lambda output, weight: tf.matmul(output, weight[0]) + weight[1], layers, input_data)
         return output
