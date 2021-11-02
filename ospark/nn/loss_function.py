@@ -14,6 +14,23 @@ class LossFunction:
         return self.calculate(prediction, target_data)
 
 
+class SparseCategoricalCrossentropy(LossFunction):
+
+    def __init__(self):
+        self._loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+
+    @property
+    def loss_function(self) -> tf.keras.losses.SparseCategoricalCrossentropy:
+        return self._loss_function
+
+    def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
+        mask  = tf.logical_not(tf.math.equal(target_data, 0))
+        loss  = self.loss_function(target_data, prediction)
+        mask  = tf.cast(mask, dtype=loss.dtype)
+        loss *= mask
+        return tf.reduce_sum(loss) / tf.reduce_sum(mask)
+
+
 class CrossEntropy(LossFunction):
 
     def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
@@ -24,9 +41,9 @@ class Dice(LossFunction):
 
     def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
         eps = 1e-5
-        intersection = tf.reduce_sum(tf.multiply(prediction, target_data), axis=[1, 2, 3])
-        union = tf.reduce_sum(prediction, axis=[1, 2, 3]) + tf.reduce_sum(target_data, axis=[1, 2, 3]) + eps
-        loss = tf.reduce_mean(1. - 2 * intersection / union, axis=0)
+        intersection = tf.reduce_sum(tf.multiply(prediction, target_data))
+        union = tf.reduce_sum(prediction) + tf.reduce_sum(target_data) + eps
+        loss  = 1. - 2 * intersection / union
         return loss
 
 
@@ -68,24 +85,27 @@ class IoU(LossFunction):
                   prediction: tf.Tensor,
                   target_data: tf.Tensor,
                   cls_target: tf.Tensor) -> tf.Tensor:
-        iou = self.calculate_iou(prediction, target_data, cls_target)
-        loss = -tf.math.log(tf.reduce_sum(iou, axis=[1, 2, 3]) / (tf.reduce_sum(cls_target) + 1))
-        return tf.reduce_mean(loss, axis=[0])
+        iou  = self.calculate_iou(prediction, target_data, cls_target)
+        loss = -tf.math.log(iou + 1e-5) * cls_target
+        return tf.reduce_sum(loss) / (tf.reduce_sum(cls_target) + 1)
 
     def calculate_iou(self,
                       prediction: tf.Tensor,
                       target_data: tf.Tensor,
                       cls_target: tf.Tensor) -> tf.Tensor:
         top_prediction, right_prediction, bottom_prediction, left_prediction = self._slice_channel(prediction)
+
         top_target, right_target, bottom_target, left_target = self._slice_channel(target_data)
-        training_area = tf.multiply(tf.add(top_prediction, bottom_prediction),
-                                    tf.add(right_prediction, left_prediction))
-        target_area = tf.multiply(tf.add(top_target, bottom_target), tf.add(right_target, left_target))
+
+        training_area  = tf.multiply(tf.add(top_prediction, bottom_prediction),
+                                     tf.add(right_prediction, left_prediction))
+        target_area    = tf.multiply(tf.add(top_target, bottom_target), tf.add(right_target, left_target))
         intersection_h = tf.add(tf.minimum(top_prediction, top_target), tf.minimum(bottom_prediction, bottom_target))
         intersection_w = tf.add(tf.minimum(right_prediction, right_target), tf.minimum(left_prediction, left_target))
-        intersection = tf.multiply(intersection_h, intersection_w) * cls_target
+        intersection   = tf.multiply(intersection_h, intersection_w) * cls_target
+
         union = tf.subtract(tf.add(training_area, target_area), intersection)
-        iou = tf.divide(intersection, tf.add(union, 1e-5))
+        iou   = tf.divide(intersection, tf.add(union, 1e-5))
         return iou
 
     def _slice_channel(self, input_data: tf.Tensor) ->tf.Tensor:
@@ -116,9 +136,10 @@ class Degree(LossFunction):
                   prediction: tf.Tensor,
                   target_data: tf.Tensor,
                   cls_target: tf.Tensor) -> tf.Tensor:
-        loss = (1.0 - tf.math.cos(prediction - target_data)) * cls_target
-        degree_loss = self.coefficient * tf.divide(tf.reduce_sum(loss, axis=[1, 2, 3]), (tf.reduce_sum(cls_target) + 1))
-        return tf.reduce_mean(degree_loss, axis=[0])
+        loss = (1.0 - tf.math.cos(prediction * cls_target - target_data))
+
+        degree_loss = self.coefficient * tf.divide(tf.reduce_sum(loss), (tf.reduce_sum(cls_target) + 1))
+        return degree_loss
 
     def __call__(self,
                  prediction: tf.Tensor,

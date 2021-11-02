@@ -99,7 +99,7 @@ class ConvolutionLayer(Layer):
         return output
 
     def on_creating(self) -> NoReturn:
-        self.assign(component=ospark.weight.truncated_normal(obj_name="filter", weight_shape=self.filter_size), name="filter")
+        self.assign(component=ospark.weight.glorot_uniform(obj_name="filter", weight_shape=self.filter_size), name="filter")
         self.assign(component=self.normalization, name="norm")
 
     def conv(self, input_data: tf.Tensor) -> tf.Tensor:

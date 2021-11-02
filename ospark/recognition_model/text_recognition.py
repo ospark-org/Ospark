@@ -43,10 +43,12 @@ class TextRecognition(Model):
             self.assign(component=layer)
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        sequential_conv_output = reduce(lambda output, layer: layer(output), self.sequential_conv, input_data)
+        mask = tf.cast(tf.math.not_equal(input_data[:, 0, :, 0], 0), dtype=tf.float32)
+        sequential_conv_output = reduce(lambda output, layer: layer(output), self.sequential_conv, input_data) * mask[:, tf.newaxis, :, tf.newaxis]
         sequence_model_output  = reduce(lambda output, layer: layer(output), self.sequential_model, tf.squeeze(sequential_conv_output, axis=1))
         prediction             = self.assigned.classify_layer(sequence_model_output)
         return prediction
+
 
 def fots_recognition_model(class_number: int,
                            scale_rate: int,

@@ -1,20 +1,24 @@
 import tensorflow as tf
 from ospark.nn.component.basic_module import BasicModule
-from typing import NoReturn, List, Optional, Callable
+from typing import NoReturn, List, Optional, Callable, Union
 import ospark
 
 class Normalization(BasicModule):
 
     def __init__(self,
                  obj_name: str,
+                 layer_dimension: Union[int, list],
                  gamma: Optional[float]=None,
                  beta: Optional[float]=None,
-                 epsilon: Optional[float]=None):
+                 epsilon: Optional[float]=None,
+                 use_bias: Optional[bool]=True,
+                 use_scale: Optional[bool]=True):
         super().__init__(obj_name=obj_name)
-        # gamme 不是 function 所以不會是 initializer
-        self._gamma   = gamma or 1.
-        self._beta    = beta or 0.
-        self._epsilon = epsilon or 0.0001
+        self._gamma     = gamma or tf.ones(shape=layer_dimension)
+        self._beta      = beta or tf.zeros(shape=layer_dimension)
+        self._epsilon   = epsilon or 0.0001
+        self._use_bias  = use_bias
+        self._use_scale = use_scale
 
     @property
     def gamma(self) -> tf.Tensor:
@@ -25,12 +29,22 @@ class Normalization(BasicModule):
         return self._beta
 
     @property
+    def use_bias(self) -> bool:
+        return self._use_bias
+
+    @property
+    def use_scale(self) -> bool:
+        return self._use_scale
+
+    @property
     def epsilon(self) -> tf.Tensor:
         return tf.constant(self._epsilon)
 
     def on_creating(self) -> NoReturn:
-        self.assign(component=ospark.Weight(obj_name="gamma", initial_value=self.gamma))
-        self.assign(component=ospark.Weight(obj_name="beta", initial_value=self.beta))
+        if self.use_scale:
+            self.assign(component=ospark.Weight(obj_name="gamma", initial_value=self.gamma))
+        if self.use_bias:
+            self.assign(component=ospark.Weight(obj_name="beta", initial_value=self.beta))
 
     def __init_subclass__(cls) -> NoReturn:
         super().__init_subclass__()
@@ -52,25 +66,35 @@ class PassNormalization(Normalization):
 class LayerNormalization(Normalization):
 
     def __init__(self,
+                 layer_dimension: Union[int, list],
                  obj_name: Optional[str]=None,
                  gamma: Optional[float]=None,
                  beta: Optional[float]=None,
-                 epsilon: Optional[float]=None):
+                 epsilon: Optional[float]=None,
+                 use_bias: Optional[bool]=True,
+                 use_scale: Optional[bool]=True):
         super().__init__(obj_name=obj_name or "layer_norm",
+                         layer_dimension=layer_dimension,
                          gamma=gamma,
                          beta=beta,
-                         epsilon=epsilon)
+                         epsilon=epsilon,
+                         use_bias=use_bias,
+                         use_scale=use_scale)
 
     def calculate(self, input_data: tf.Tensor, axis: int=-1) -> tf.Tensor:
         mean, variance = tf.nn.moments(input_data, axes=[axis], keepdims=True)
         normalization_outputs = (input_data - mean) / (tf.sqrt(variance) + self.epsilon)
-        return self.assigned.gamma * normalization_outputs + self.assigned.beta
+        if self.use_scale:
+            normalization_outputs *= self.assigned.gamma
+        if self.use_bias:
+            normalization_outputs += self.assigned.beta
+        return normalization_outputs
 
 
 class BatchNormalization(Normalization):
 
     def __init__(self,
-                 input_depth: tf.Tensor,
+                 input_depth: Union[tf.Tensor, int],
                  obj_name: str=None,
                  gamma: Optional[float]=None,
                  beta: Optional[float]=None,
@@ -78,11 +102,16 @@ class BatchNormalization(Normalization):
                  momentum: Optional[float]=None,
                  moving_mean: Optional[float]=None,
                  moving_variance: Optional[float]=None,
-                 trainable: bool=True):
+                 use_bias: Optional[bool]=True,
+                 use_scale: Optional[bool]=True,
+                 trainable: Optional[bool]=True):
         super(BatchNormalization, self).__init__(obj_name=obj_name or "batch_norm",
+                                                 layer_dimension=input_depth,
                                                  gamma=gamma,
                                                  beta=beta,
-                                                 epsilon=epsilon)
+                                                 epsilon=epsilon,
+                                                 use_scale=use_scale,
+                                                 use_bias=use_bias)
         self._input_depth     = input_depth
         self._momentum        = momentum or 0.9
         self._moving_mean     = moving_mean or 0.
@@ -105,29 +134,45 @@ class BatchNormalization(Normalization):
     def moving_variance(self) -> tf.Tensor:
         return tf.ones(shape=[self.input_depth]) * self._moving_variance
 
-    def calculate(self, input_data: tf.Tensor) -> Callable[[tf.Tensor], tf.Tensor]:
+    def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return self._calculate(input_data)
 
     def on_creating(self) -> NoReturn:
         super().on_creating()
-        self.assign(component=ospark.Weight(obj_name="moving_mean", initial_value=self.moving_mean))
-        self.assign(component=ospark.Weight(obj_name="moving_variance", initial_value=self.moving_variance))
+        self.assign(component=ospark.Weight(obj_name="moving_mean",
+                                            initial_value=self.moving_mean,
+                                            trainable=False))
+        self.assign(component=ospark.Weight(obj_name="moving_variance",
+                                            initial_value=self.moving_variance,
+                                            trainable=False))
 
     def train_process(self, input_data: tf.Tensor) -> tf.Tensor:
-        mean, variance = tf.nn.moments(x=input_data, axes=[0, 1, 2])
-        moving_mean = self.assigned.moving_mean * self.momentum + mean * (1 - self.momentum)
-        moving_varience = self.assigned.moving_variance * self.momentum + variance * (1 - self.momentum)
-        return tf.nn.batch_normalization(x=input_data,
-                                         mean=moving_mean,
-                                         variance=moving_varience,
-                                         scale=self.assigned.gamma,
-                                         offset=self.assigned.beta,
-                                         variance_epsilon=self.epsilon)
+        mean, variance  = tf.nn.moments(x=input_data, axes=[0, 1, 2])
+        moving_mean     = self.assigned.moving_mean * self.momentum + mean * (1 - self.momentum)
+        self.assigned.moving_mean.assign(moving_mean)
+        moving_variance = self.assigned.moving_variance * self.momentum + variance * (1 - self.momentum)
+        self.assigned.moving_variance.assign(moving_variance)
+        normalization_outputs = tf.nn.batch_normalization(x=input_data,
+                                                          mean=mean,
+                                                          variance=variance,
+                                                          offset=None,
+                                                          scale=None,
+                                                          variance_epsilon=self.epsilon)
+        if self.use_scale:
+            normalization_outputs *= self.assigned.gamma
+        if self.use_bias:
+            normalization_outputs += self.assigned.beta
+        return normalization_outputs
 
     def inference_process(self, input_data: tf.Tensor) -> tf.Tensor:
-        return tf.nn.batch_normalization(x=input_data,
-                                         mean=self.assigned.moving_mean,
-                                         variance=self.assigned.moving_variance,
-                                         scale=self.assigned.gamma,
-                                         offset=self.assigned.beta,
-                                         variance_epsilon=self.epsilon)
+        normalization_outputs = tf.nn.batch_normalization(x=input_data,
+                                                          mean=self.assigned.moving_mean,
+                                                          variance=self.assigned.moving_variance,
+                                                          offset=None,
+                                                          scale=None,
+                                                          variance_epsilon=self.epsilon)
+        if self.use_scale:
+            normalization_outputs *= self.assigned.gamma
+        if self.use_bias:
+            normalization_outputs += self.assigned.beta
+        return normalization_outputs

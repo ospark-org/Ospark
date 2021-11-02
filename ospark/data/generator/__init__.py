@@ -11,11 +11,11 @@ class DataGenerator:
         self._step           = initial_step or 0
 
     @property
-    def training_data(self) -> List[dict]:
+    def training_data(self) -> List[str]:
         return self._training_data
 
     @property
-    def target_data(self) -> List[dict]:
+    def target_data(self) -> List[str]:
         return self._target_data
 
     @property

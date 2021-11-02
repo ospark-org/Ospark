@@ -48,7 +48,7 @@ def shared_convolution_decoder(input_channels: List[int], output_channels: List[
         input_channel, output_channel = channels
         name = f"connection_layer_{i}"
         connection_layer = ConnectionLayer(obj_name=name,
-                                           input_channel=input_channel,
+                                           concatenated_channel=input_channel,
                                            output_channel=output_channel,
                                            trainable=trainable)
         connection_layers.append(connection_layer)
