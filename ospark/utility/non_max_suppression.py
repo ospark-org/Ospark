@@ -21,33 +21,27 @@ class NonMaxSuppression:
 
         datasets = [
             (score,
-             sparse.coo_matrix(np.squeeze(cv2.fillPoly(copy.copy(block_image), [bbox_coordinate.numpy()], 1))),
+             sparse.coo_matrix(np.squeeze(cv2.fillPoly(copy.copy(block_image), [bbox_coordinate], 1))),
              bbox_coordinate) for score, bbox_coordinate in bboxes_datasets
         ]
-
+        datasets = sorted(datasets, key=lambda x:-x[0])
         surviving_bbox = []
 
         while datasets != []:
-            observed_score, observed_polygon, bbox_coordinate = datasets.pop()
+            observed_score, observed_polygon, bbox_coordinate = datasets.pop(0)
             datasets_len = len(datasets)
 
-            i = -1
             for i in range(datasets_len):
                 reference_score, reference_polygon, reference_bbox_coordinate = datasets.pop(0)
                 iou = self.calculate_iou(observed_polygon=observed_polygon, reference_polygon=reference_polygon)
-                if iou >= self.iou_threshold:
-                    if observed_score < reference_score:
-                        datasets.append((reference_score, reference_polygon, reference_bbox_coordinate))
-                        break
-                else:
+                if iou < self.iou_threshold:
                     datasets.append((reference_score, reference_polygon, reference_bbox_coordinate))
-            if i + 1 == datasets_len:
-                surviving_bbox.append(bbox_coordinate)
+            surviving_bbox.append(bbox_coordinate)
         return surviving_bbox
 
     def calculate_iou(self,  observed_polygon: sparse.coo_matrix, reference_polygon: sparse.coo_matrix):
-        added__polygon = observed_polygon + reference_polygon
-        intersection   = len((added__polygon == 2).indices)
-        union          = len(added__polygon.nonzero()[0])
-        iou = intersection / union
+        added_polygon = observed_polygon + reference_polygon
+        intersection   = len((added_polygon == 2).indices)
+        union          = len(added_polygon.nonzero()[0])
+        iou = intersection / (union + 1e-5)
         return iou

@@ -1,5 +1,6 @@
 from typing import List, NoReturn, Tuple, Callable, Union, Optional
 import tensorflow as tf
+import math
 from PIL import Image
 
 
@@ -69,24 +70,33 @@ class RoIRotate:
         Returns:
             affine_transformation:  Callable[[tf.Tensor], Tuple[tf.Tensor, tf.Tensor]]
         """
+
+        image_height, image_width = image.shape[0], image.shape[1]
+
         def _demarcated(bbox_points: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-            crop_img, offset_width, offset_height, image_width, image_height = self.crop_image(image=image, bbox_points=bbox_points)
+            result = self.crop_image(image=image,
+                                     bbox_points=bbox_points,
+                                     image_height=image_height,
+                                     image_width=image_width)
 
-            zoom_rate, textbox_width  = self.calculate_resize_scale(points=bbox_points)
-            target_image_coordinate   = self.create_coordinate_matrix(image_height=self.target_height, image_width=textbox_width)
-            original_image_coordinate = self.create_coordinate_matrix(image_height=image_height, image_width=image_width)
+            if result is not None:
+                crop_img, offset_width, offset_height, subimage_width, subimage_height = result
 
-            affine_matrix     = self.create_affine_matrix(zoom_rate=zoom_rate,
-                                                          bbox_points=bbox_points,
-                                                          left_top_point=[bbox_points[0, 1] - offset_height,
-                                                                          bbox_points[0, 0] - offset_width])
-            # Mapping to original coordinate.
-            mapping_coordinate = tf.matmul(target_image_coordinate, tf.transpose(affine_matrix, [1, 0]))
-            textbox           = self.roi_rotate(crop_img=crop_img,
-                                                mapping_coordinates=mapping_coordinate,
-                                                original_coordinate=original_image_coordinate,
-                                                textbox_width=textbox_width)
-            return textbox, textbox_width
+                zoom_rate, textbox_width  = self.calculate_resize_scale(points=bbox_points)
+                target_image_coordinate   = self.create_coordinate_matrix(image_height=self.target_height, image_width=textbox_width)
+                original_image_coordinate = self.create_coordinate_matrix(image_height=subimage_height, image_width=subimage_width)
+
+                affine_matrix     = self.create_affine_matrix(zoom_rate=zoom_rate,
+                                                              bbox_points=bbox_points,
+                                                              left_top_point=[bbox_points[0, 1] - offset_height,
+                                                                              bbox_points[0, 0] - offset_width])
+                # Mapping to original coordinate.
+                mapping_coordinate = tf.matmul(target_image_coordinate, tf.transpose(affine_matrix, [1, 0]))
+                textbox           = self.roi_rotate(crop_img=crop_img,
+                                                    mapping_coordinates=mapping_coordinate,
+                                                    original_coordinate=original_image_coordinate,
+                                                    textbox_width=textbox_width)
+                return textbox, textbox_width
         return _demarcated
 
     def calculate_resize_scale(self, points: tf.Tensor):
@@ -141,27 +151,36 @@ class RoIRotate:
 
         x_partition, y_partition = vector
         if axis == "x":
-            angle = tf.acos(x_partition / length) / tf.cond(y_partition >= 0, lambda: 1, lambda: -1)
+            if x_partition != 0:
+                angle = tf.acos(x_partition / length) / tf.cond(y_partition >= 0, lambda: 1, lambda: -1)
+            else:
+                angle = tf.cond(y_partition >= 0, lambda: math.pi / 2, lambda: -math.pi / 2)
         elif axis == "y":
-            angle = tf.acos(y_partition / length) / tf.cond(x_partition >= 0, lambda: 1, lambda: -1)
+            if y_partition != 0:
+                angle = tf.acos(y_partition / length) / tf.cond(x_partition >= 0, lambda: 1, lambda: -1)
+            else:
+                angle = tf.cond(x_partition >= 0, lambda: math.pi / 2, lambda: -math.pi / 2)
         else:
             raise KeyError(f"Undefined axis {axis}, place use \"x\" or \"y\" axis.")
         return angle
 
     def crop_image(self,
                    image: tf.Tensor,
-                   bbox_points: tf.Tensor
+                   bbox_points: tf.Tensor,
+                   image_height: tf.Tensor,
+                   image_width: tf.Tensor
                    ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         max_point = tf.cast(tf.reduce_max(bbox_points, axis=0), tf.int32)
         min_point = tf.cast(tf.reduce_min(bbox_points, axis=0), tf.int32)
         offset_width, offset_height = min_point[0], min_point[1]
-        target_width, target_height = max_point[0] - min_point[0], max_point[1] - min_point[1]
-        crop_img = tf.cast(tf.image.crop_to_bounding_box(image=image,
-                                                         offset_width=offset_width,
-                                                         offset_height=offset_height,
-                                                         target_width=target_width,
-                                                         target_height=target_height), dtype=tf.float32)
-        return crop_img, offset_width, offset_height, target_width, target_height
+        target_width, target_height = tf.minimum(max_point[0], image_width) - min_point[0], tf.minimum(max_point[1], image_height) - min_point[1]
+        if target_width > 0 and target_height > 0:
+            crop_img = tf.cast(tf.image.crop_to_bounding_box(image=image,
+                                                             offset_width=offset_width,
+                                                             offset_height=offset_height,
+                                                             target_width=target_width,
+                                                             target_height=target_height), dtype=tf.float32)
+            return crop_img, offset_width, offset_height, target_width, target_height
 
     def roi_rotate(self,
                    crop_img: tf.Tensor,
