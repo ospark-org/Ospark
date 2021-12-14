@@ -38,14 +38,14 @@ class PixelWiseDetection(Model):
         super().on_creating()
         self.assign(component=self.backbone, name="backbone")
 
-    def model(self, input_data: tf.Tensor) -> Tuple[Tuple[tf.Tensor], tf.Tensor]:
+    def model(self, input_data: tf.Tensor) -> Tuple[Tuple[tf.Tensor, tf.Tensor, tf.Tensor], tf.Tensor]:
         feature_map = self.assigned.backbone(input_data)
         prediction  = tf.nn.conv2d(feature_map, self.assigned.classify_layer, strides=self.strides, padding=self.padding)
 
         score_map, bbox_map, angle_map = prediction[:, :, :, 0: 1], prediction[:, :, :, 1: 5], prediction[:, :, :, 5: 6]
 
         score_map = tf.nn.sigmoid(score_map)
-        bbox_map  = tf.nn.relu(bbox_map)
+        bbox_map  = tf.nn.sigmoid(bbox_map) * 224
         angle_map = (tf.nn.sigmoid(angle_map) - .5) * math.pi
         return (score_map, bbox_map, angle_map), feature_map
 

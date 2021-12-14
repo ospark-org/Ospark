@@ -3,7 +3,7 @@ from ospark.nn.block import Block
 from ospark.nn.layer import Layer
 from ospark.nn.layer.dense_layer import DenseLayer
 from ospark.nn.block.vgg_block import fots_like_vgg
-from ospark.nn.component.activation import Activation, ReLU
+from ospark.nn.component.activation import Activation, relu
 from ospark.nn.component.normalization import Normalization, BatchNormalization
 from ospark.nn.block.transformer_block import transformer_encoder_block, create_coder_blocks
 from typing import List, NoReturn, Optional, Callable
@@ -55,6 +55,7 @@ def fots_recognition_model(class_number: int,
                            head_number: int,
                            input_channel: int,
                            sequential_output_channels: List[List[int]],
+                           dropout_rate: Optional[float]=0.0,
                            sequential_model_block_number: Optional[int]=4,
                            sequential_model_create_function: Optional[Callable[[str, int, int, int], Block]]=transformer_encoder_block,
                            trainable: Optional[bool]=True
@@ -66,7 +67,8 @@ def fots_recognition_model(class_number: int,
                                            create_func=sequential_model_create_function,
                                            embedding_size=sequential_output_channels[-1][-1],
                                            head_number=head_number,
-                                           scale_rate=scale_rate)
+                                           scale_rate=scale_rate,
+                                           dropout_rate=dropout_rate)
     classify_layer   = DenseLayer(obj_name="classify_layer",
                                   input_dimension=sequential_output_channels[-1][-1],
                                   hidden_dimension=[class_number])

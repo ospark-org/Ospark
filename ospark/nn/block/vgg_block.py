@@ -2,7 +2,7 @@ from __future__ import annotations
 from ospark.nn.block import Block
 from ospark.nn.layer import Layer
 from ospark.nn.component.normalization import Normalization, BatchNormalization
-from ospark.nn.component.activation import Activation, ReLU
+from ospark.nn.component.activation import Activation, relu
 from ospark.nn.layer.convolution_layer import ConvolutionLayer
 from typing import List, NoReturn, Optional
 from functools import reduce
@@ -109,7 +109,7 @@ def fots_like_vgg(input_channel: int,
                                               pooling_strides=[1, 2, 1, 1],
                                               normalization=[BatchNormalization(input_depth=channel,
                                                                                 trainable=trainable) for channel in layer_channels],
-                                              activation=[ReLU() for i in layer_channels])
+                                              activation=[relu() for i in layer_channels])
         vgg_blocks.append(vgg_block)
     return vgg_blocks
 

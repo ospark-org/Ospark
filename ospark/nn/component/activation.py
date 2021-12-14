@@ -12,20 +12,24 @@ class Activation:
     def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
         return self.calculate(input_data=input_data)
 
+
 class PassActivation(Activation):
 
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return input_data
 
-class ReLU(Activation):
+
+class relu(Activation):
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.relu(input_data)
 
-class ELU(Activation):
+
+class elu(Activation):
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.elu(input_data)
 
-class LeakyReLU(Activation):
+
+class leakyrelu(Activation):
 
     @property
     def alpha(self) -> tf.float32:
@@ -39,16 +43,16 @@ class LeakyReLU(Activation):
         return tf.nn.leaky_relu(input_data, self.alpha)
 
 
-class SELU(Activation):
+class selu(Activation):
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.selu(input_data)
 
 
-class CReLU(Activation):
+class crelu(Activation):
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.crelu(input_data)
 
 
-class GELU(Activation):
+class gelu(Activation):
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.gelu(input_data)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from ospark.nn.layer import Layer
-from ospark.nn.component.activation import Activation, ReLU, PassActivation
+from ospark.nn.component.activation import Activation, relu, PassActivation
 from ospark.nn.component.normalization import Normalization, BatchNormalization, PassNormalization
 from typing import List, NoReturn, Optional
 import tensorflow as tf
@@ -65,7 +65,7 @@ class ConvolutionLayer(Layer):
                      strides: List[int],
                      padding: str,
                      trainable: bool) -> ConvolutionLayer:
-        activation    = ReLU()
+        activation    = relu()
         normalization = BatchNormalization(input_depth=filter_size[-2], trainable=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
@@ -82,7 +82,7 @@ class ConvolutionLayer(Layer):
                      strides: List[int],
                      padding: str,
                      trainable: bool) -> ConvolutionLayer:
-        activation = ReLU()
+        activation = relu()
         normalization = BatchNormalization(input_depth=filter_size[-1], trainable=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,

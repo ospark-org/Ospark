@@ -58,6 +58,7 @@ class FOTSDataGenerator(DataGenerator):
         self._image_shrunk_size     = (np.array(target_size).astype(np.float32) * image_shrunk_scale).astype(np.int32)
         self._blank_image           = np.zeros(shape=[self.image_shrunk_size[1], self.image_shrunk_size[0], 1])
         self._coordinate_matrix     = self.create_coordinate_matrix()
+        self._basic_move_distance   = np.array([[1, 1], [-1, 1], [-1, -1], [1, -1]])
         self._indexed_training_data = self.build_file_index(self.training_data)
         self._indexed_target_data   = self.build_file_index(self.target_data)
         self._data_indices          = [i for i in self.indexed_training_data.keys()]
@@ -126,6 +127,13 @@ class FOTSDataGenerator(DataGenerator):
         return self._use_shuffle
 
     def create_coordinate_matrix(self) -> np.ndarray:
+        """
+        This function doing create coordinate matrix.
+
+        Returns:
+             coordinate_matrix: np.ndarray
+                shape is [y_size, x_size, axis_number]
+        """
         x_axis = np.tile(np.arange(self.image_shrunk_size[0])[np.newaxis, :, np.newaxis], [self.image_shrunk_size[1], 1, 1])
         y_axis = np.tile(np.arange(self.image_shrunk_size[1])[:, np.newaxis, np.newaxis], [1, self.image_shrunk_size[0], 1])
         return np.concatenate([x_axis, y_axis], axis=-1)
@@ -181,21 +189,28 @@ class FOTSDataGenerator(DataGenerator):
             fp = open(os.path.join(self.target_data_folder, path), 'r', encoding="utf-8-sig")
             points = []
             words  = []
-            for i in fp:
-                target      = i.strip().split(",")
+            for datasets in fp:
+                target      = datasets.strip().split(",")
                 bbox_points = np.reshape(np.around(np.array([int(j) for j in target[:8]]) * self.image_shrunk).astype(np.int32),
                                          [-1, 2])
                 _height      = np.linalg.norm(bbox_points[-1] - bbox_points[0], axis=0)
                 _width       = np.linalg.norm(bbox_points[0] - bbox_points[1], axis=0)
                 if _height > 2 * _width:
                     height      = _width
+                    width       = _height
                     bbox_points = bbox_points[[1, 2, 3, 0], :]
                 else:
                     height      = _height
+                    width       = _width
+
+                # filtered according origin image size.
+                if height / self.image_shrunk < self.filter_height or width / self.image_shrunk < self.filter_height:
+                    continue
 
                 detection_map += self.create_detection_map(bbox_points=bbox_points)
-                target_word = ",".join(target[8:])
-                if target_word in self.filter_words or height < self.filter_height:
+                target_word    = ",".join(target[8:])
+
+                if target_word in self.filter_words:
                     continue
                 points.append(bbox_points)
                 words.append(target_word)
@@ -205,13 +220,6 @@ class FOTSDataGenerator(DataGenerator):
                 bbox_points_stacked.append(points)
         return tf.cast(tf.concat(target_images, axis=0), dtype=tf.float32), words_stacked, bbox_points_stacked
 
-    def create_shrunk_coordinate(self, bbox_points: np.ndarray) -> np.ndarray:
-        clockwise_vector        = (bbox_points[[1, 2, 3, 0], :] - bbox_points) * self.bbox_shrunk_scale / 2
-        counterclockwise_vector = (bbox_points[[3, 0, 1, 2], :] - bbox_points) * self.bbox_shrunk_scale / 2
-        shrunk_vector           = clockwise_vector + counterclockwise_vector
-        shrunk_points           = np.round(bbox_points + shrunk_vector).astype(np.int32)
-        return shrunk_points
-
     def create_detection_map(self, bbox_points: np.ndarray) -> np.ndarray:
         shrunk_points   = self.create_shrunk_coordinate(bbox_points)
         score_map       = cv2.fillPoly(copy.copy(self.blank_image), [shrunk_points], 1)
@@ -219,10 +227,21 @@ class FOTSDataGenerator(DataGenerator):
         angle_map       = angle * score_map
         return np.concatenate([score_map, bbox_map, angle_map], axis=-1)
 
+    def create_shrunk_coordinate(self, bbox_points: np.ndarray) -> np.ndarray:
+        clockwise_vector        = (bbox_points[[1, 2, 3, 0], :] - bbox_points) * self.bbox_shrunk_scale / 2
+        counterclockwise_vector = (bbox_points[[3, 0, 1, 2], :] - bbox_points) * self.bbox_shrunk_scale / 2
+        shrunk_vector           = clockwise_vector + counterclockwise_vector
+        shrunk_points           = np.round(bbox_points + shrunk_vector).astype(np.int32)
+        equal_position          = np.where(shrunk_points == bbox_points)
+
+        shrunk_points[equal_position] += self._basic_move_distance[equal_position]
+        return shrunk_points
+
     def create_bbox_map(self, score_map: np.ndarray, bbox_points: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         score_map_coordinate = score_map * self.coordinate_matrix
         a, b, c, angle       = self.calculate_coefficient(bbox_points)
         distance = self.calculate_distance(coordinate_matrix=score_map_coordinate, a=a, b=b, c=c)
+        # 因為平行四邊形的關係，所以除以 np.cos(angle)
         distance[[1, 3], :, :] = distance[[1, 3], :, :] / np.cos(angle)
         distance = np.transpose(distance, [1, 2, 0]) * score_map
         return distance, angle
@@ -291,19 +310,21 @@ if __name__ == "__main__":
                                              training_files_name=training_list,
                                              target_files_name=target_list,
                                              batch_size=4,
-                                             filter_height=2,
-                                             filter_words="###",
+                                             filter_height=8,
+                                             filter_words={"###"},
                                              target_size=[1280, 720],
                                              image_shrunk_scale=0.25)
     for training_data, target_image, words, bbox_points in data_generator:
-        print(np.shape(training_data), np.shape(target_image))
         print(words, bbox_points)
-        # for imag, target_image in zip(training_data, target_image):
-            # img = Image.fromarray(imag)
+        for imag, target_image, bbox_point in zip(training_data, target_image, bbox_points):
+            # img = Image.fromarray(imag.numpy().astype(np.uint8))
             # img.show()
-            # tar_img = Image.fromarray(target_image[:,:,2] * 10)
+            index = np.where(target_image[:, :, 2].numpy() > 0)
+            # print(target_image[:, :, 1:5].numpy()[index])
+            # tar_img = Image.fromarray(target_image[:, :, 1].numpy().astype(np.uint8) * 20)
+            # tar_img = tar_img.resize((1280, 720), Image.BILINEAR)
             # tar_img.show()
-        # break
+        break
 
 
 

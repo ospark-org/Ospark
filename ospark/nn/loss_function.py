@@ -1,3 +1,5 @@
+import math
+
 import tensorflow as tf
 from typing import NoReturn, Optional
 
@@ -41,9 +43,9 @@ class Dice(LossFunction):
 
     def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
         eps = 1e-5
-        intersection = tf.reduce_sum(tf.multiply(prediction, target_data))
-        union = tf.reduce_sum(prediction) + tf.reduce_sum(target_data) + eps
-        loss  = 1. - 2 * intersection / union
+        intersection = tf.reduce_sum(tf.multiply(prediction, target_data), axis=[1, 2, 3])
+        union = tf.reduce_sum(prediction, axis=[1, 2, 3]) + tf.reduce_sum(target_data, axis=[1, 2, 3]) + eps
+        loss  = tf.reduce_mean(1. - 2 * intersection / union)
         return loss
 
 
@@ -86,8 +88,8 @@ class IoU(LossFunction):
                   target_data: tf.Tensor,
                   cls_target: tf.Tensor) -> tf.Tensor:
         iou  = self.calculate_iou(prediction, target_data, cls_target)
-        loss = -tf.math.log(iou + 1e-5) * cls_target
-        return tf.reduce_sum(loss) / (tf.reduce_sum(cls_target) + 1)
+        loss = -tf.math.log((tf.reduce_sum(iou, axis=[1, 2, 3]) + 1) / (tf.reduce_sum(cls_target, axis=[1, 2, 3]) + 1))
+        return tf.reduce_mean(loss)
 
     def calculate_iou(self,
                       prediction: tf.Tensor,
@@ -102,11 +104,11 @@ class IoU(LossFunction):
         target_area    = tf.multiply(tf.add(top_target, bottom_target), tf.add(right_target, left_target))
         intersection_h = tf.add(tf.minimum(top_prediction, top_target), tf.minimum(bottom_prediction, bottom_target))
         intersection_w = tf.add(tf.minimum(right_prediction, right_target), tf.minimum(left_prediction, left_target))
-        intersection   = tf.multiply(intersection_h, intersection_w) * cls_target
+        intersection   = tf.multiply(intersection_h, intersection_w)
 
         union = tf.subtract(tf.add(training_area, target_area), intersection)
-        iou   = tf.divide(intersection, tf.add(union, 1e-5))
-        return iou
+        iou   = tf.maximum(tf.divide(intersection + 1, tf.add(union, 1)), 0)
+        return iou * cls_target
 
     def _slice_channel(self, input_data: tf.Tensor) ->tf.Tensor:
         top    = input_data[:, :, :, 0:1]
