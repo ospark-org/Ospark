@@ -33,10 +33,20 @@ class TransformerEncoderBlock(Block):
                          head_number: int,
                          scale_rate: int,
                          attention_cls: SelfAttentionLayer,
-                         feedforward_cls: FeedForwardLayer) -> TransformerEncoderBlock:
+                         feedforward_cls: FeedForwardLayer,
+                         dropout_rate: float,
+                         is_training: Optional[bool]=False) -> TransformerEncoderBlock:
         return cls(obj_name=obj_name, 
-                   attention=attention_cls(obj_name="attention", embedding_size=embedding_size, head_number=head_number), 
-                   feedforward=feedforward_cls(obj_name="feedforward", embedding_size=embedding_size, scale_rate=scale_rate))
+                   attention=attention_cls(obj_name="attention",
+                                           embedding_size=embedding_size,
+                                           head_number=head_number,
+                                           dropout_rate=dropout_rate,
+                                           is_training=is_training),
+                   feedforward=feedforward_cls(obj_name="feedforward",
+                                               embedding_size=embedding_size,
+                                               scale_rate=scale_rate,
+                                               dropout_rate=dropout_rate,
+                                               is_training=is_training))
 
     def on_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
@@ -85,11 +95,26 @@ class TransformerDecoderBlock(Block):
                          scale_rate: int,
                          attention_cls: SelfAttentionLayer,
                          encode_decode_attention_cls: EncoderDecoderAttentionLayer,
-                         feedforward_cls: FeedForwardLayer) -> TransformerEncoderBlock:
+                         feedforward_cls: FeedForwardLayer,
+                         dropout_rate: float,
+                         is_training: Optional[bool]=False) -> TransformerEncoderBlock:
         return cls(obj_name=obj_name, 
-                   attention=attention_cls(obj_name="attention", embedding_size=embedding_size, head_number=head_number, look_ahead=True),
-                   encode_decode_attention=encode_decode_attention_cls(obj_name="encode_decode_attention", embedding_size=embedding_size, head_number=head_number),
-                   feedforward=feedforward_cls(obj_name="feedforward", embedding_size=embedding_size, scale_rate=scale_rate))
+                   attention=attention_cls(obj_name="attention",
+                                           embedding_size=embedding_size,
+                                           head_number=head_number,
+                                           look_ahead=True,
+                                           dropout_rate=dropout_rate,
+                                           is_training=is_training),
+                   encode_decode_attention=encode_decode_attention_cls(obj_name="encode_decode_attention",
+                                                                       embedding_size=embedding_size,
+                                                                       head_number=head_number,
+                                                                       dropout_rate=dropout_rate,
+                                                                       is_training=is_training),
+                   feedforward=feedforward_cls(obj_name="feedforward",
+                                               embedding_size=embedding_size,
+                                               scale_rate=scale_rate,
+                                               dropout_rate=dropout_rate,
+                                               is_training=is_training))
 
     def on_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
@@ -117,18 +142,49 @@ class TransformerDecoderBlock(Block):
         return self.model(input_data, encoder_output, encoder_padding_mask, decoder_padding_mask)
 
 
-def transformer_encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
-    attention = SelfAttentionLayer("attention", embedding_size=embedding_size, head_number=head_number)
-    feedforward = FeedForwardLayer("feedforward", embedding_size=embedding_size, scale_rate=scale_rate)
+def transformer_encoder_block(obj_name: str,
+                              embedding_size: int,
+                              head_number: int,
+                              scale_rate: int,
+                              dropout_rate: float,
+                              is_training: Optional[bool]=False) -> Block:
+    attention = SelfAttentionLayer(obj_name="attention",
+                                   embedding_size=embedding_size,
+                                   head_number=head_number,
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
+    feedforward = FeedForwardLayer(obj_name="feedforward",
+                                   embedding_size=embedding_size,
+                                   scale_rate=scale_rate,
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
     block = TransformerEncoderBlock(obj_name=obj_name, 
                                     attention=attention, 
                                     feedforward=feedforward)
     return block
 
-def transformer_decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int) -> Block:
-    attention = SelfAttentionLayer("attention", embedding_size=embedding_size, head_number=head_number)
-    encode_decode_attention = EncoderDecoderAttentionLayer("encode_decode_attention", embedding_size=embedding_size, head_number=head_number)
-    feedforward = FeedForwardLayer("feedforward", embedding_size=embedding_size, scale_rate=scale_rate)
+def transformer_decoder_block(obj_name: str,
+                              embedding_size: int,
+                              head_number: int,
+                              scale_rate: int,
+                              dropout_rate: float,
+                              is_training: Optional[bool]=False) -> Block:
+    attention = SelfAttentionLayer(obj_name="attention",
+                                   embedding_size=embedding_size,
+                                   head_number=head_number,
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training,
+                                   use_look_ahead=True)
+    encode_decode_attention = EncoderDecoderAttentionLayer(obj_name="encode_decode_attention",
+                                                           embedding_size=embedding_size,
+                                                           head_number=head_number,
+                                                           dropout_rate=dropout_rate,
+                                                           is_training=is_training)
+    feedforward = FeedForwardLayer(obj_name="feedforward",
+                                   embedding_size=embedding_size,
+                                   scale_rate=scale_rate,
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
     block = TransformerDecoderBlock(obj_name=obj_name, 
                                     attention=attention, 
                                     encode_decode_attention=encode_decode_attention,
@@ -136,15 +192,18 @@ def transformer_decoder_block(obj_name: str, embedding_size: int, head_number: i
     return block
 
 def create_coder_blocks(block_number: int,
-                        create_func: Callable[[str, int, int, int], Block],
+                        create_func: Callable[[str, int, int, int, float], Block],
                         embedding_size: int,
                         head_number: int,
-                        scale_rate: int) -> List[Block]:
+                        scale_rate: int,
+                        dropout_rate: Optional[float]=0.0) -> List[Block]:
     blocks = []
     for i in range(block_number):
         name = f"block_{i}"
         blocks.append(create_func(obj_name=name,
                                   embedding_size=embedding_size,
                                   head_number=head_number,
-                                  scale_rate=scale_rate))
+                                  scale_rate=scale_rate,
+                                  dropout_rate=dropout_rate))
     return blocks
+

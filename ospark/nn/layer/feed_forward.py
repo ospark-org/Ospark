@@ -12,14 +12,17 @@ class FeedForwardLayer(Layer):
     def __init__(self, 
                  obj_name: str, 
                  embedding_size: int, 
-                 scale_rate: int, 
+                 scale_rate: int,
+                 dropout_rate: float,
+                 is_training: Optional[bool]=False,
                  activation: Optional[Activation]=None,
                  normalization: Optional[Normalization]=None) -> NoReturn:
-        super().__init__(obj_name=obj_name)
+        super().__init__(obj_name=obj_name, is_training=is_training)
         self._normalization  = normalization or ospark.normalization.LayerNormalization(layer_dimension=embedding_size)
-        self._activation     = activation or ospark.activation.ReLU()
+        self._activation     = activation or ospark.activation.relu()
         self._embedding_size = embedding_size
         self._scale_rate     = scale_rate
+        self._dropout_layer  = tf.keras.layers.Dropout(rate=dropout_rate)
 
     @property
     def embedding_size(self) -> int:
@@ -36,6 +39,10 @@ class FeedForwardLayer(Layer):
     @property
     def normalization(self) -> Normalization:
         return self._normalization
+
+    @property
+    def dropout_layer(self) -> tf.keras.layers.Dropout:
+        return self._dropout_layer
 
     def on_creating(self) -> NoReturn:
         self.assign(component=ospark.weight.glorot_uniform(
@@ -55,7 +62,7 @@ class FeedForwardLayer(Layer):
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
         main_output          = self.feedforward(input_data)
         residual_output      = self.residual_net(input_data)
-        added_residual       = tf.add(main_output, residual_output)
+        added_residual       = tf.add(self.dropout_layer(main_output, training=self.is_training), residual_output)
         normalization_output = self.assigned.norm(added_residual)
         return normalization_output
 

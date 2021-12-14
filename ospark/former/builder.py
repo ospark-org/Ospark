@@ -13,6 +13,8 @@ def build_informer(class_number: int,
                    head_number: int,
                    scale_rate: int,
                    sample_factor: float,
+                   dropout_rate: float,
+                   is_training: Optional[bool]=False,
                    use_decoder: bool=True,
                    filter_width: int=None,
                    pooling_size: list=None,
@@ -22,18 +24,37 @@ def build_informer(class_number: int,
         decoder_blocks = []
         for i in range(block_number):
             encoder_name = f"encoder_block_{i}"
-            encoder_blocks.append(informer_encoder_block(encoder_name, embedding_size, head_number, scale_rate, sample_factor, filter_width, pooling_size, strides))
+            encoder_blocks.append(informer_encoder_block(obj_name=encoder_name,
+                                                         embedding_size=embedding_size,
+                                                         head_number=head_number,
+                                                         scale_rate=scale_rate,
+                                                         sample_factor=sample_factor,
+                                                         filter_width=filter_width,
+                                                         pooling_size=pooling_size,
+                                                         strides=strides))
             if use_decoder:
                 decoder_name = f"decoder_block_{i}"
-                decoder_blocks.append(informer_decoder_block(decoder_name, embedding_size, head_number, scale_rate, sample_factor))
-        return Informer("Informer", encoder_blocks, class_number, embedding_size, decoder_blocks)
+                decoder_blocks.append(informer_decoder_block(obj_name=decoder_name,
+                                                             embedding_size=embedding_size,
+                                                             head_number=head_number,
+                                                             scale_rate=scale_rate,
+                                                             sample_factor=sample_factor))
+        return Informer(obj_name="Informer",
+                        encoder_blocks=encoder_blocks,
+                        class_number=class_number,
+                        embedding_size=embedding_size,
+                        decoder_blocks=decoder_blocks,
+                        dropout_rate=dropout_rate,
+                        is_training=is_training)
 
 
 def build_transformer(block_number: int,
                       head_number: int,
                       embedding_size :int,
                       scale_rate: int,
-                      class_number :int,
+                      class_number: int,
+                      dropout_rate: float,
+                      is_training: Optional[bool]=False,
                       encoder_corpus_size: Optional[int]=None,
                       decoder_corpus_size: Optional[int]=None,
                       use_embedding_layer: Optional[bool]=True,
@@ -43,9 +64,19 @@ def build_transformer(block_number: int,
     decoder_blocks = []
     for i in range(block_number):
         encoder_name = f"encoder_block_{i}"
-        encoder_blocks.append(transformer_encoder_block(encoder_name, embedding_size, head_number, scale_rate))
+        encoder_blocks.append(transformer_encoder_block(obj_name=encoder_name,
+                                                        embedding_size=embedding_size,
+                                                        head_number=head_number,
+                                                        scale_rate=scale_rate,
+                                                        dropout_rate=dropout_rate,
+                                                        is_training=is_training))
         decoder_name = f"decoder_block_{i}"
-        decoder_blocks.append((transformer_decoder_block(decoder_name, embedding_size, head_number, scale_rate)))
+        decoder_blocks.append((transformer_decoder_block(obj_name=decoder_name,
+                                                         embedding_size=embedding_size,
+                                                         head_number=head_number,
+                                                         scale_rate=scale_rate,
+                                                         dropout_rate=dropout_rate,
+                                                         is_training=is_training)))
     return Transformer(obj_name="Transformer",
                        encoder_blocks=encoder_blocks,
                        class_number=class_number,
@@ -54,7 +85,9 @@ def build_transformer(block_number: int,
                        encoder_corpus_size=encoder_corpus_size,
                        decoder_corpus_size=decoder_corpus_size,
                        use_embedding_layer=use_embedding_layer,
-                       embedding_size=embedding_size)
+                       embedding_size=embedding_size,
+                       dropout_rate=dropout_rate,
+                       is_training=is_training)
 
 
 def build_exdeep_transformer(encoder_block_number: int,
@@ -63,6 +96,8 @@ def build_exdeep_transformer(encoder_block_number: int,
                              embedding_size: int,
                              scale_rate: int,
                              class_number: int,
+                             dropout_rate: float,
+                             is_training: Optional[bool]=False,
                              encoder_corpus_size: Optional[int]=None,
                              decoder_corpus_size: Optional[int]=None,
                              use_embedding_layer: Optional[bool]=True,
@@ -72,10 +107,20 @@ def build_exdeep_transformer(encoder_block_number: int,
     decoder_blocks = []
     for i in range(encoder_block_number):
         encoder_name = f"encoder_block_{i}"
-        encoder_blocks.append(exdeep_encoder_block(encoder_name, embedding_size, head_number, scale_rate))
+        encoder_blocks.append(exdeep_encoder_block(obj_name=encoder_name,
+                                                   embedding_size=embedding_size,
+                                                   head_number=head_number,
+                                                   scale_rate=scale_rate,
+                                                   dropout_rate=dropout_rate,
+                                                   is_training=is_training,))
     for i in range(decoder_block_number):
         decoder_name = f"decoder_block_{i}"
-        decoder_blocks.append((exdeep_decoder_block(decoder_name, embedding_size, head_number, scale_rate)))
+        decoder_blocks.append((exdeep_decoder_block(obj_name=decoder_name,
+                                                    embedding_size=embedding_size,
+                                                    head_number=head_number,
+                                                    scale_rate=scale_rate,
+                                                    dropout_rate=dropout_rate,
+                                                    is_training=is_training)))
     return ExdeepTransformer(obj_name="ExdeepTransformer",
                              encoder_blocks=encoder_blocks,
                              class_number=class_number,

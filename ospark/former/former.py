@@ -16,6 +16,8 @@ class Former(BasicModule):
                  encoder_blocks: List[Block],
                  class_number: int,
                  embedding_size: int,
+                 dropout_rate: float,
+                 is_training: Optional[bool]=False,
                  encoder_corpus_size: Optional[int]=None,
                  decoder_corpus_size: Optional[int]=None,
                  use_embedding_layer: Optional[bool]=True,
@@ -32,16 +34,19 @@ class Former(BasicModule):
         self._class_number         = class_number
         self._embedding_layer      = None
         self._embedding_scale_rate = tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
+        self._encoder_dropout_layer= tf.keras.layers.Dropout(rate=dropout_rate)
         self._classify_layer       = ospark.weight.glorot_uniform(obj_name="classify_layer",
                                                                   weight_shape=[self.embedding_size, class_number])
         self._classify_layer_bias  = ospark.weight.zeros(obj_name="classify_layer_bias",
                                                          weight_shape=[class_number])
         self._classifier           = tf.nn.sigmoid if class_number == 2 else tf.nn.softmax
         self._use_classifier       = use_classifier
+        self._is_training          = is_training
         for component in [*self.encoder_blocks, self.classify_layer, self.classify_layer_bias]:
             self.assign(component)
 
         if decoder_blocks is not None:
+            self._decoder_dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
             for component in decoder_blocks:
                 self.assign(component)
 
@@ -123,6 +128,18 @@ class Former(BasicModule):
     @property
     def create_mask_matrix(self) -> Callable[[tf.Tensor, Optional[tf.Tensor]], Tuple[tf.Tensor, tf.Tensor]]:
         return self._create_mask_matrix
+
+    @property
+    def encoder_dropout_layer(self) -> tf.keras.layers.Dropout:
+        return self._encoder_dropout_layer
+
+    @property
+    def decoder_dropout_layer(self) -> tf.keras.layers.Dropout:
+        return self._decoder_dropout_layer
+
+    @property
+    def is_training(self) -> bool:
+        return self._is_training
 
     def create_onehot_mask(self,
                            encoder_input: tf.Tensor,

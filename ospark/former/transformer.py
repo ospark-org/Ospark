@@ -11,6 +11,8 @@ class Transformer(Former):
                  encoder_blocks: List[TransformerEncoderBlock],
                  class_number: int, 
                  embedding_size: int,
+                 dropout_rate: float,
+                 is_training: Optional[bool]=False,
                  encoder_corpus_size: Optional[int]=None,
                  decoder_corpus_size: Optional[int]=None,
                  use_embedding_layer: Optional[bool]=True,
@@ -27,7 +29,9 @@ class Transformer(Former):
                          decoder_corpus_size=decoder_corpus_size,
                          use_classifier=use_classifier,
                          decoder_blocks=decoder_blocks,
-                         max_length=max_length
+                         max_length=max_length,
+                         dropout_rate=dropout_rate,
+                         is_training=is_training
                          )
 
     def model(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
@@ -37,6 +41,7 @@ class Transformer(Former):
         encoder_input  = self.encoder_embedding_layer(encoder_input)
         encoder_input *= self.embedding_scale_rate
         encoder_input += self.encoding_table[:, :seq_len, :]
+        encoder_input  = self.encoder_dropout_layer(encoder_input, training=self.is_training)
         output         = encoder_input
         for encoder_block in self.encoder_blocks:
             output = encoder_block(input_data=output, mask=encoder_padding_mask)
@@ -45,6 +50,7 @@ class Transformer(Former):
             decoder_input  = self.decoder_embedding_layer(decoder_input)
             decoder_input *= self.embedding_scale_rate
             decoder_input += self.encoding_table[:, :seq_len, :]
+            decoder_input  = self.decoder_dropout_layer(decoder_input, training=self.is_training)
             encoder_output = output
             output = decoder_input
             for decoder_block in self.decoder_blocks:

@@ -2,7 +2,7 @@ from ospark.nn.layer.self_attention import SelfAttentionLayer
 import tensorflow as tf
 import numpy as np
 from ospark.nn.component.normalization import Normalization
-from typing import NoReturn, Tuple
+from typing import NoReturn, Tuple, Optional
 
 
 class ProbSparseAttentionLayer(SelfAttentionLayer):
@@ -12,11 +12,17 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
                  embedding_size: int,
                  head_number: int,
                  sample_factor: float,
+                 dropout_rate: float,
+                 is_training: Optional[bool]=False,
+                 use_look_ahead: Optional[bool]=False,
                  normalization: Normalization=None) -> NoReturn:
         super().__init__(obj_name=obj_name,
                          embedding_size=embedding_size,
                          head_number=head_number,
-                         normalization=normalization)
+                         normalization=normalization,
+                         dropout_rate=dropout_rate,
+                         is_training=is_training,
+                         use_look_ahead=use_look_ahead)
         self._sample_factor = sample_factor
         self._top_u         = None
 
@@ -57,7 +63,12 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
         batch, head_number, V_sequence_length, embedding_size = tf.shape(V)
         K = tf.transpose(K, [0, 1, 3, 2])
         scaled_dot_product = tf.matmul(Q, K) / tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
-        if mask is not None:
+        if self.use_look_ahead and mask is not None:
+            scaled_dot_product += (tf.cast(tf.math.not_equal(self.look_ahead_mask[self.top_u, :] +
+                                                             mask[np.arange(batch)[:, None, None],
+                                                                  np.arange(head_number)[None, :, None],
+                                                                  self.top_u, :], 0), tf.float32) * -1e9)
+        elif mask is not None:
             scaled_dot_product += (mask[np.arange(batch)[:, None, None],
                                         np.arange(head_number)[None, :, None],
                                         self.top_u, :] * -1e9)
