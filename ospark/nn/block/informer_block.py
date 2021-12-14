@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import NoReturn
+from typing import NoReturn, Optional
 from ospark.nn.layer.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
 from ospark.nn.layer.prob_sparse import ProbSparseAttentionLayer
 from ospark.nn.layer.distilling_layer import DistillingLayer
 from ospark.nn.layer.feed_forward import FeedForwardLayer
-from ospark.nn.component.activation import GELU
+from ospark.nn.component.activation import gelu
 from . import Block
 import tensorflow as tf
 
@@ -104,21 +104,64 @@ class InformerDecoderBlock(Block):
     def __call__(self, input_data: tf.Tensor, encoder_output: tf.Tensor) -> tf.Tensor:
         return self.model(input_data, encoder_output)
 
-def informer_encoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int, sample_factor: float,
-                  filter_width: int=None, pooling_size: list=None, strides: list=None) -> Block:
-    attention   = ProbSparseAttentionLayer("attention", embedding_size=embedding_size, head_number=head_number, sample_factor=sample_factor)
-    feedforward = FeedForwardLayer("feedforward", embedding_size=embedding_size, scale_rate=scale_rate, activation=GELU())
-    distilling  = DistillingLayer("distilling", embedding_size=embedding_size, filter_width=filter_width, pooling_size=pooling_size, strides=strides)
+def informer_encoder_block(obj_name: str,
+                           embedding_size: int,
+                           head_number: int,
+                           scale_rate: int,
+                           sample_factor: float,
+                           dropout_rate: float,
+                           is_training: Optional[bool]=False,
+                           filter_width: int=None,
+                           pooling_size: list=None,
+                           strides: list=None) -> Block:
+    attention   = ProbSparseAttentionLayer("attention",
+                                           embedding_size=embedding_size,
+                                           head_number=head_number,
+                                           sample_factor=sample_factor,
+                                           dropout_rate=dropout_rate,
+                                           is_training=is_training)
+    feedforward = FeedForwardLayer("feedforward",
+                                   embedding_size=embedding_size,
+                                   scale_rate=scale_rate,
+                                   activation=gelu(),
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
+    distilling  = DistillingLayer("distilling",
+                                  embedding_size=embedding_size,
+                                  filter_width=filter_width,
+                                  pooling_size=pooling_size,
+                                  strides=strides)
     block = InformerEncoderBlock(obj_name=obj_name,
                                  attention=attention,
                                  feedforward=feedforward,
                                  distilling=distilling)
     return block
 
-def informer_decoder_block(obj_name: str, embedding_size: int, head_number: int, scale_rate: int, sample_factor: float) -> Block:
-    attention = ProbSparseAttentionLayer("sparse_attention", embedding_size=embedding_size, head_number=head_number, sample_factor=sample_factor, look_ahead=True)
-    encode_decode_attention = EncoderDecoderAttentionLayer("encode_decode_attention", embedding_size=embedding_size, head_number=head_number)
-    feedforward = FeedForwardLayer("feedforward", embedding_size=embedding_size, scale_rate=scale_rate, activation=GELU())
+def informer_decoder_block(obj_name: str,
+                           embedding_size: int,
+                           head_number: int,
+                           scale_rate: int,
+                           sample_factor: float,
+                           dropout_rate: float,
+                           is_training: Optional[bool]=False) -> Block:
+    attention = ProbSparseAttentionLayer("sparse_attention",
+                                         embedding_size=embedding_size,
+                                         head_number=head_number,
+                                         sample_factor=sample_factor,
+                                         use_look_ahead=True,
+                                         dropout_rate=dropout_rate,
+                                         is_training=is_training)
+    encode_decode_attention = EncoderDecoderAttentionLayer("encode_decode_attention",
+                                                           embedding_size=embedding_size,
+                                                           head_number=head_number,
+                                                           dropout_rate=dropout_rate,
+                                                           is_training=is_training)
+    feedforward = FeedForwardLayer("feedforward",
+                                   embedding_size=embedding_size,
+                                   scale_rate=scale_rate,
+                                   activation=gelu(),
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
     block = InformerDecoderBlock(obj_name=obj_name,
                                  attention=attention,
                                  encode_decode_attention=encode_decode_attention,
