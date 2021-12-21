@@ -22,7 +22,7 @@ class SparseCategoricalCrossEntropy(LossFunction):
         self._loss_function = tf.keras.losses.SparseCategoricalCrossEntropy(from_logits=True, reduction='none')
 
     @property
-    def loss_function(self) -> tf.keras.losses.SparseCategoricalCrossEntropy:
+    def loss_function(self) -> tf.keras.losses.Loss:
         return self._loss_function
 
     def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
