@@ -46,7 +46,7 @@ class PixelWiseDetection(Model):
 
         score_map = tf.nn.sigmoid(score_map)
         bbox_map  = tf.nn.sigmoid(bbox_map) * 224
-        angle_map = (tf.nn.sigmoid(angle_map) - .5) * math.pi
+        angle_map = (tf.nn.sigmoid(angle_map) - .5) * math.pi/2
         return (score_map, bbox_map, angle_map), feature_map
 
     @tf.function

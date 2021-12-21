@@ -1,7 +1,7 @@
 import math
 
 import tensorflow as tf
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, Tuple
 
 class LossFunction:
 
@@ -9,20 +9,20 @@ class LossFunction:
         super().__init_subclass__()
         setattr(LossFunction, cls.__name__, cls)
 
-    def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
+    def calculate(self, *args, **kwargs) -> tf.Tensor:
         raise NotImplementedError()
 
-    def __call__(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
+    def __call__(self, prediction: tf.Tensor, target_data: tf.Tensor, *args, **kwargs) -> tf.Tensor:
         return self.calculate(prediction, target_data)
 
 
-class SparseCategoricalCrossentropy(LossFunction):
+class SparseCategoricalCrossEntropy(LossFunction):
 
     def __init__(self):
-        self._loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+        self._loss_function = tf.keras.losses.SparseCategoricalCrossEntropy(from_logits=True, reduction='none')
 
     @property
-    def loss_function(self) -> tf.keras.losses.SparseCategoricalCrossentropy:
+    def loss_function(self) -> tf.keras.losses.SparseCategoricalCrossEntropy:
         return self._loss_function
 
     def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
@@ -43,19 +43,36 @@ class Dice(LossFunction):
 
     def calculate(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
         eps = 1e-5
-        intersection = tf.reduce_sum(tf.multiply(prediction, target_data), axis=[1, 2, 3])
-        union = tf.reduce_sum(prediction, axis=[1, 2, 3]) + tf.reduce_sum(target_data, axis=[1, 2, 3]) + eps
-        loss  = tf.reduce_mean(1. - 2 * intersection / union)
+        intersection = tf.reduce_sum(tf.multiply(prediction, target_data))
+        union = tf.reduce_sum(prediction) + tf.reduce_sum(target_data) + eps
+        loss  = 1. - 2 * intersection / union
         return loss
 
 
 class Balanced(LossFunction):
 
+    def __init__(self, image_width: int, image_height: int, omega: int):
+        self._image_width  = image_width
+        self._image_height = image_height
+        self._omega        = omega
+
+    @property
+    def image_width(self) -> int:
+        return self._image_width
+
+    @property
+    def image_height(self) -> int:
+        return self._image_height
+
+    @property
+    def omega(self) -> int:
+        return self._omega
+
     def calculate_loss(self, prediction: tf.Tensor, target_data: tf.Tensor) -> tf.Tensor:
         total_elements = self.image_width * self.image_height
         beta = 1 - (self.omega / total_elements)
         reward_part = tf.multiply(beta, tf.multiply(target_data, tf.math.log(prediction)))
-        punish_part = tf.multiply((1 - beta), tf.multiply((1 - target_data), tf.math.log((1 - prediction))))
+        punish_part = tf.multiply((1. - beta), tf.multiply((1. - target_data), tf.math.log((1. - prediction))))
         loss = -tf.reduce_mean(tf.add(reward_part, punish_part))
         return loss
 
@@ -110,7 +127,7 @@ class IoU(LossFunction):
         iou   = tf.maximum(tf.divide(intersection + 1, tf.add(union, 1)), 0)
         return iou * cls_target
 
-    def _slice_channel(self, input_data: tf.Tensor) ->tf.Tensor:
+    def _slice_channel(self, input_data: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         top    = input_data[:, :, :, 0:1]
         right  = input_data[:, :, :, 1:2]
         bottom = input_data[:, :, :, 2:3]
