@@ -1,4 +1,4 @@
-from ospark.nn.layer.feed_forward import *
+from ospark.nn.layers.feed_forward import *
 from typing import NoReturn, Union
 import tensorflow as tf
 

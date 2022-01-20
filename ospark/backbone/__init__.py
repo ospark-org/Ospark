@@ -1,1 +1,1 @@
-from ospark.backbone.resnet import resnet_18, resnet_34, resnet_50, resnet_101, resnet_152
+from .builder import resnet18, resnet34, resnet50, resnet101, resnet152

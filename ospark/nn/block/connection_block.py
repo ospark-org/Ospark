@@ -1,6 +1,6 @@
 from ospark.nn.block import Block
-from ospark.nn.layer import Layer
-from ospark.nn.layer.connection_layer import ConnectionLayer
+from ospark.nn.layers import Layer
+from ospark.nn.layers.connection_layer import ConnectionLayer
 from typing import List, NoReturn
 from functools import reduce
 import tensorflow as tf
@@ -18,7 +18,7 @@ class ConnectionBlock(Block):
     def connection_layers(self) -> List[Layer]:
         return self._connection_layers
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         for layer in self.connection_layers:
             self.assign(component=layer)
 

@@ -1,5 +1,5 @@
-from ospark.nn.component.basic_module import BasicModule
-from ospark.nn.layer.embedding_layer import EmbeddingLayer
+from ospark.nn.component.basic_module import ModelObject
+from ospark.nn.layers.embedding_layer import EmbeddingLayer
 from ospark.nn.component.normalization import Normalization
 from ospark.nn.block import Block
 from ospark.nn.component.weight import Weight
@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 
-class Former(BasicModule):
+class Former(ModelObject):
 
     def __init__(self,
                  obj_name: str,
@@ -52,7 +52,7 @@ class Former(BasicModule):
 
         if use_embedding_layer:
             if encoder_corpus_size is None:
-                raise KeyError("Use embedding layer, must setting encoder_corpus_size")
+                raise KeyError("Use embedding layers, must setting encoder_corpus_size")
             self._encoder_embedding_layer = EmbeddingLayer(obj_name="encoder_embedding_layer",
                                                            embedding_dimension=embedding_size,
                                                            corpus_size=encoder_corpus_size)
@@ -60,7 +60,7 @@ class Former(BasicModule):
 
             if decoder_blocks is not None:
                 if decoder_corpus_size is None:
-                    raise KeyError("Use embedding layer, must setting decoder_corpus_size")
+                    raise KeyError("Use embedding layers, must setting decoder_corpus_size")
                 self._decoder_embedding_layer = EmbeddingLayer(obj_name="decoder_embedding_layer",
                                                                embedding_dimension=embedding_size,
                                                                corpus_size=decoder_corpus_size)

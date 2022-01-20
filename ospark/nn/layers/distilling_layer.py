@@ -54,7 +54,7 @@ class DistillingLayer(Layer):
     def norm(self) -> Normalization:
         return self._norm
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=ospark.weight.truncated_normal(obj_name="conv_filter",
                                                              weight_shape=[self.filter_width, 
                                                                            self.embedding_size, 

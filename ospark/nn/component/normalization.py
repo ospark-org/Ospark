@@ -1,9 +1,9 @@
 import tensorflow as tf
-from ospark.nn.component.basic_module import BasicModule
+from ospark.nn.component.basic_module import ModelObject
 from typing import NoReturn, List, Optional, Callable, Union
 import ospark
 
-class Normalization(BasicModule):
+class Normalization(ModelObject):
 
     def __init__(self,
                  obj_name: str,
@@ -40,7 +40,7 @@ class Normalization(BasicModule):
     def epsilon(self) -> tf.Tensor:
         return tf.constant(self._epsilon)
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         if self.use_scale:
             self.assign(component=ospark.Weight(obj_name="gamma", initial_value=self.gamma))
         if self.use_bias:
@@ -58,6 +58,13 @@ class Normalization(BasicModule):
 
 
 class PassNormalization(Normalization):
+
+    def __init__(self):
+        super(PassNormalization, self).__init__(obj_name="pass_norm",
+                                                layer_dimension=0)
+
+    def in_creating(self) -> NoReturn:
+        pass
 
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return input_data
@@ -137,8 +144,8 @@ class BatchNormalization(Normalization):
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return self._calculate(input_data)
 
-    def on_creating(self) -> NoReturn:
-        super().on_creating()
+    def in_creating(self) -> NoReturn:
+        super().in_creating()
         self.assign(component=ospark.Weight(obj_name="moving_mean",
                                             initial_value=self.moving_mean,
                                             trainable=False))

@@ -62,7 +62,7 @@ class ResnetCell(Cell):
             blocks.append(block)
         return cls(obj_name=obj_name, blocks=blocks, trainable=trainable)
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         for block in self.blocks:
             self.assign(component=block)
 

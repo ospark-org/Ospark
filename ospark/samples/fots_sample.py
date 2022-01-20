@@ -39,15 +39,15 @@ training_list = os.listdir(training_data_folder)
 target_list   = os.listdir(target_data_folder)
 
 # create data generator
-data_generator = FOTSDataGenerator(training_data_folder=training_data_folder,
-                                   target_data_folder=target_data_folder,
+data_generator = FOTSDataGenerator(training_folder=training_data_folder,
+                                   labelling_folder=target_data_folder,
                                    training_files_name=training_list,
                                    target_files_name=target_list,
                                    batch_size=2,
                                    filter_height=8,
                                    filter_words={"###"},
                                    target_size=[1280, 720],
-                                   image_shrunk_scale=0.25)
+                                   image_shrink_scale=0.25)
 
 # create fots trainer
 save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fots_weight.json")

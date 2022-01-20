@@ -1,4 +1,4 @@
-from ospark.nn.layer import *
+from ospark.nn.layers import *
 import ospark
 
 
@@ -20,7 +20,7 @@ class EmbeddingLayer(Layer):
     def corpus_size(self) -> int:
         return self._corpus_size
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         with tf.device("cpu:0"):
             self.assign(component=ospark.weight.uniform(obj_name="embedding_layer",
                                                         weight_shape=[self.corpus_size,

@@ -1,6 +1,6 @@
 from ospark.nn.block.transformer_block import TransformerEncoderBlock, TransformerDecoderBlock
-from ospark.nn.layer.deep_attention import DeepEncoderDecoder, DeepAttentionLayer
-from ospark.nn.layer.deep_feed_forward import DeepFeedForwardLayer
+from ospark.nn.layers.deep_attention import DeepEncoderDecoder, DeepAttentionLayer
+from ospark.nn.layers.deep_feed_forward import DeepFeedForwardLayer
 from typing import Optional, NoReturn
 import tensorflow as tf
 

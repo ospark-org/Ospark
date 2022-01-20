@@ -1,22 +1,22 @@
-from ospark.nn.component.basic_module import BasicModule
-from ospark.backbone.backbone import Backbone
+from ospark.nn.component.basic_module import ModelObject
+from ospark.nn.layers import Layer
 from typing import NoReturn
-from ospark import Weight
+
 import tensorflow as tf
 
-class Model(BasicModule):
+class Model(ModelObject):
 
     def __init__(self,
                  obj_name: str,
-                 classify_layer: Weight):
+                 classify_layer: Layer):
         super().__init__(obj_name=obj_name)
         self._classify_layer = classify_layer
 
     @property
-    def classify_layer(self) -> Weight:
+    def classify_layer(self) -> Layer:
         return self._classify_layer
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=self.classify_layer, name="classify_layer")
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:

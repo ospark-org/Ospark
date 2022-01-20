@@ -2,16 +2,15 @@ from ospark.nn.optimizer.learning_rate_schedule import TransformerWarmup
 from ospark.former.builder import build_exdeep_transformer
 from ospark.data.generator.translate_data_generator import TranslateDataGenerator
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
-from ospark.test_loss import Transformer
 from ospark.nn.loss_function import SparseCategoricalCrossEntropy
 from typing import Optional
 import tensorflow_datasets as tfds
 import tensorflow_addons as tfa
 import tensorflow as tf
-import os
-import time
 import json
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import os
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 
 def text_encoder(folder_path: str,
                  vocab_file: str,
@@ -50,7 +49,7 @@ dropout_rate         = 0.3
 use_graph_mode       = True
 epoch_number         = 50
 save_times           = 5
-vocabulary_size      = 2**13
+vocabulary_size      = 32000
 use_profiling_phase  = True
 save_init_weights    = True
 use_restore          = True
@@ -60,6 +59,7 @@ if use_profiling_phase:
     model_name = "exdeep"
 else:
     model_name = "transformer"
+
 # 權重儲存路徑
 save_path = os.path.join(folder_path,
             f"{model_name}_{batch_size}_{epoch_number}_{encoder_block_number}_{decoder_block_number}_{head_number}_{embedding_size}.json")
@@ -94,12 +94,14 @@ target_data_text_encoder = text_encoder(folder_path=folder_path,
 
 
 # 建立 data_generator
-data_generator = TranslateDataGenerator(datasets=train_examples,
+training_data, target_data = list(zip(*train_examples))
+data_generator = TranslateDataGenerator(training_data=training_data,
+                                        target_data=target_data,
                                         train_data_encoder=train_data_text_encoder,
                                         target_data_encoder=target_data_text_encoder,
                                         batch_size=batch_size,
-                                        take_number=take_number,
-                                        max_length=max_length)
+                                        max_length=max_length,
+                                        max_token=3000)
 
 # 建立模型
 exdeep_model = build_exdeep_transformer(encoder_block_number=encoder_block_number,
@@ -121,110 +123,25 @@ loss_function = SparseCategoricalCrossEntropy()
 
 
 # print("建立 trainer")
-# trainer = ExdeepTransformerTrainer(data_generator=data_generator,
-#                                    model=exdeep_model,
-#                                    epoch_number=epoch_number,
-#                                    optimizer=optimizer,
-#                                    loss_function=loss_function,
-#                                    save_times=save_times,
-#                                    save_path=save_path,
-#                                    use_profiling_phase=use_profiling_phase,
-#                                    use_auto_graph=use_graph_mode,
-#                                    save_init_weights=save_init_weights,
-#                                    init_weights_path=init_weights_path)
-#
-# if os.path.isfile(init_weights_path) and use_restore:
-#     print("讀取 init weights")
-#     with open(init_weights_path, 'r') as fp:
-#         weights = json.load(fp)
-#     trainer.restore_weights(weights=weights)
-# else:
-#     print("Use random weights")
-#
-# print("開始訓練")
-# trainer.start()
+trainer = ExdeepTransformerTrainer(data_generator=data_generator,
+                                   model=exdeep_model,
+                                   epoch_number=epoch_number,
+                                   optimizer=optimizer,
+                                   loss_function=loss_function,
+                                   save_times=save_times,
+                                   save_path=save_path,
+                                   use_profiling_phase=use_profiling_phase,
+                                   use_auto_graph=use_graph_mode,
+                                   save_init_weights=save_init_weights,
+                                   init_weights_path=init_weights_path)
 
+if os.path.isfile(init_weights_path) and use_restore:
+    print("讀取 init weights")
+    with open(init_weights_path, 'r') as fp:
+        weights = json.load(fp)
+    trainer.restore_weights(weights=weights)
+else:
+    print("Use random weights")
 
-# 建立 tensorflow transformer
-transformer = Transformer(num_layers=6,
-                          d_model=512,
-                          num_heads=4,
-                          dff=512,
-                          input_vocab_size=train_data_text_encoder.vocab_size + 2,
-                          target_vocab_size=target_data_text_encoder.vocab_size + 2,
-                          pe_input=2000,
-                          pe_target=2000,
-                          rate=0.0)
-
-train_loss     = tf.keras.metrics.Mean(name='train_loss')
-train_accuracy = tf.keras.metrics.Mean(name='train_accuracy')
-
-train_step_signature = [
-    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-]
-
-# 計算訓練準確率
-def accuracy_function(real, pred):
-  accuracies = tf.equal(real, tf.argmax(pred, axis=2))
-
-  mask = tf.math.logical_not(tf.math.equal(real, 0))
-  accuracies = tf.math.logical_and(mask, accuracies)
-
-  accuracies = tf.cast(accuracies, dtype=tf.float32)
-  mask = tf.cast(mask, dtype=tf.float32)
-  return tf.reduce_sum(accuracies)/tf.reduce_sum(mask)
-
-
-# 串接訓練流程
-@tf.function(input_signature=train_step_signature)
-def train_step(inp, tar):
-  tar_inp = tar[:, :-1]
-  tar_real = tar[:, 1:]
-
-  with tf.GradientTape() as tape:
-    predictions, _ = transformer([inp, tar_inp],
-                                 training = True)
-    loss = loss_function(predictions, tar_real)
-
-  gradients = tape.gradient(loss, transformer.trainable_variables)
-  optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
-
-  train_loss(loss)
-  train_accuracy(accuracy_function(tar_real, predictions))
-
-checkpoint_path = "./checkpoints/train"
-
-ckpt = tf.train.Checkpoint(transformer=transformer,
-                         optimizer=optimizer)
-
-ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
-
-# if a checkpoint exists, restore the latest checkpoint.
-if ckpt_manager.latest_checkpoint:
-  ckpt.restore(ckpt_manager.latest_checkpoint)
-  print('Latest checkpoint restored!!')
-
-
-# 開始訓練
-for epoch in range(epoch_number):
-  start = time.time()
-  print("training start.")
-
-  train_loss.reset_states()
-  train_accuracy.reset_states()
-
-  # inp -> portuguese, tar -> english
-  for (batch, (inp, tar)) in enumerate(data_generator):
-    train_step(inp, tar)
-
-    if batch % 1 == 0:
-      print(f'Epoch {epoch + 1} Batch {batch} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
-
-  if (epoch + 1) % 5 == 0:
-    ckpt_save_path = ckpt_manager.save()
-    print(f'Saving checkpoint for epoch {epoch+1} at {ckpt_save_path}')
-
-  print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
-
-  print(f'Time taken for 1 epoch: {time.time() - start:.2f} secs\n')
+print("開始訓練")
+trainer.start()

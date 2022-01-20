@@ -1,5 +1,5 @@
 from ospark.nn.component.normalization import Normalization
-from ospark.nn.layer.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
+from ospark.nn.layers.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
 from typing import NoReturn, Optional, Union
 import tensorflow as tf
 

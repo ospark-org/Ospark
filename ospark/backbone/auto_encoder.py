@@ -4,7 +4,7 @@ from typing import NoReturn
 import tensorflow as tf
 
 
-class AutoEncoder(Backbone):
+class Autoencoder(Backbone):
 
     def __init__(self,
                  obj_name: str,
@@ -22,7 +22,7 @@ class AutoEncoder(Backbone):
     def decoder(self) -> Block:
         return self._decoder
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=self.encoder, name="encoder")
         self.assign(component=self.decoder, name="decoder")
 

@@ -1,16 +1,16 @@
-from ospark.nn.component.basic_module import BasicModule
+from ospark.nn.component.basic_module import ModelObject
 from typing import NoReturn, Optional
 import tensorflow as tf
 
-class Backbone(BasicModule):
+class Backbone(ModelObject):
 
     def __init__(self,
                  obj_name: str,
-                 use_catch: Optional[bool]=False,
-                 trainable: Optional[bool]=True):
+                 use_catch: Optional[bool]=None,
+                 trainable: Optional[bool]=None):
         super().__init__(obj_name=obj_name)
-        self._trainable = trainable
-        self._use_catch = use_catch
+        self._trainable = trainable or True
+        self._use_catch = use_catch or False
         self._catch_box = []
 
     @property
@@ -25,11 +25,11 @@ class Backbone(BasicModule):
     def catch_box(self) -> list:
         return self._catch_box
 
-    def on_creating(self) -> NoReturn:
-        return NotImplementedError()
+    def in_creating(self) -> NoReturn:
+        raise NotImplementedError("Is required")
 
     def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        return NotImplementedError()
+        raise NotImplementedError("Is required")
 
     def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
         return self.model(input_data=input_data)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Optional, NoReturn, Callable, List
-from ospark.nn.layer.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
-from ospark.nn.layer.deep_attention import DeepAttentionLayer, DeepEncoderDecoder
-from ospark.nn.layer.feed_forward import FeedForwardLayer
-from ospark.nn.layer.deep_feed_forward import DeepFeedForwardLayer
+from ospark.nn.layers.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
+from ospark.nn.layers.deep_attention import DeepAttentionLayer, DeepEncoderDecoder
+from ospark.nn.layers.feed_forward import FeedForwardLayer
+from ospark.nn.layers.deep_feed_forward import DeepFeedForwardLayer
 from . import Block
 import tensorflow as tf
 
@@ -48,7 +48,7 @@ class TransformerEncoderBlock(Block):
                                                dropout_rate=dropout_rate,
                                                is_training=is_training))
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
         self.assign(name="feedforward", component=self.feedforward)
     
@@ -116,7 +116,7 @@ class TransformerDecoderBlock(Block):
                                                dropout_rate=dropout_rate,
                                                is_training=is_training))
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
         self.assign(name="encode_decode_attention", component=self.encode_decode_attention)
         self.assign(name="feedforward", component=self.feedforward)

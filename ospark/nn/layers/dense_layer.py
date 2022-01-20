@@ -1,4 +1,4 @@
-from ospark.nn.layer import Layer
+from ospark.nn.layers import Layer
 from typing import List, NoReturn, Optional, Callable, Tuple, Union
 from ospark.nn.component.activation import Activation, PassActivation
 from functools import reduce
@@ -46,7 +46,7 @@ class DenseLayer(Layer):
     def forward(self) -> Callable[[tf.Tensor, Union[List[tf.Tensor], tf.Tensor]], tf.Tensor]:
         return self._forward
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         for i, output_dimension in enumerate(self.hidden_dimension):
             if i == 0:
                 input_dimension = self.input_dimension

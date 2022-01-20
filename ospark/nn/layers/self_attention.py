@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from . import Layer
+from ospark.nn.layers import Layer
 from ospark.nn.component.normalization import Normalization
 from typing import NoReturn, Tuple, Callable, Optional
 import ospark
@@ -58,7 +58,7 @@ class SelfAttentionLayer(Layer):
     def look_ahead_mask(self) -> tf.Tensor:
         return 1 - tf.linalg.band_part(tf.ones((self.sequence_length, self.sequence_length)), -1, 0)
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(ospark.weight.glorot_uniform(
             obj_name="Q_weights",
             weight_shape=[self.embedding_size, self.embedding_size]

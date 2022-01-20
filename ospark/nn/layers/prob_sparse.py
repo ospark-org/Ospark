@@ -1,4 +1,4 @@
-from ospark.nn.layer.self_attention import SelfAttentionLayer
+from ospark.nn.layers.self_attention import SelfAttentionLayer
 import tensorflow as tf
 import numpy as np
 from ospark.nn.component.normalization import Normalization

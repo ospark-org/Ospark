@@ -29,20 +29,20 @@ class FOTSTrainer(Trainer):
                  save_delegate: Optional[SaveDelegate]=None,
                  save_times: Optional[int]=None,
                  save_path: Optional[str]=None,
-                 use_graph: Optional[bool]=True,
-                 use_multi_gpu: Optional[bool]=False,
-                 devices: List[str]=None):
+                 use_graph: Optional[bool]=True):
         super().__init__(model=detection_model,
                          data_generator=data_generator,
                          epoch_number=epoch_number,
                          optimizer=optimizer,
+                         loss_function=None,
                          save_delegate=save_delegate,
                          save_times=save_times,
                          save_path=save_path,
                          use_auto_graph=use_graph,
-                         use_multi_gpu=use_multi_gpu,
-                         devices=devices)
+                         use_multi_gpu=False,
+                         devices=None)
         self._roi_rotate                   = RoIRotate(batch_size=batch_size, target_height=roi_image_height)
+        self._detection_model              = detection_model
         self._recognition_model            = recognition_model
         self._classify_loss_function       = classify_loss_function
         self._bbox_loss_function           = bbox_loss_function
@@ -54,6 +54,7 @@ class FOTSTrainer(Trainer):
         self._recognition_variables        = None
         self._reg_optimizer                = reg_optimizer
         self._recognition_loss_coefficient = recognition_loss_coefficient or 1.
+        self.recognition_model.create()
 
     @property
     def recognition_model(self) -> Model:
@@ -113,9 +114,7 @@ class FOTSTrainer(Trainer):
                               reg_optimizer: Optimizer,
                               save_path: Optional[str]=None,
                               save_times: Optional[int]=None,
-                              trainable: Optional[bool]=True,
-                              use_multi_gpu: Optional[bool]=False,
-                              devices: Optional[List[str]]=None):
+                              trainable: Optional[bool]=True):
         detection_model   = fots_detection_model(trainable=trainable)
         recognition_model = fots_recognition_model(class_number=len(corpus),
                                                    scale_rate=4,
@@ -135,21 +134,23 @@ class FOTSTrainer(Trainer):
                    reg_optimizer=reg_optimizer,
                    corpus=corpus,
                    save_path=save_path,
-                   save_times=save_times,
-                   use_multi_gpu=use_multi_gpu,
-                   devices=devices)
+                   save_times=save_times)
 
     def start(self) -> NoReturn:
-        self.recognition_model.create()
         self._detection_variables   = self.weights_operator.collect("detection_model")
         self._recognition_variables = self.weights_operator.collect("recognition_model")
         for i in range(self.epoch_number):
             start = time.time()
             detection_loss_value   = 0
             recognition_loss_value = 0
-            for batch, (train_data, target_maps, target_words, bbox_points) in enumerate(self.data_generator):
+            for batch, dataset in enumerate(self.data_generator):
+                train_data   = dataset.training_data
+                target_maps  = dataset.target_data
+                target_words = dataset.words
+                bbox_points  = dataset.bbox_points
 
                 feature_maps, detection_loss = self.detection_part(input_data=train_data, target_maps=target_maps)
+
                 sub_images, images_number, target_words, total_width = self.roi_rotate.start(images=feature_maps,
                                                                                              bbox_points=bbox_points,
                                                                                              target_words=target_words)

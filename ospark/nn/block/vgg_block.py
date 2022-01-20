@@ -1,9 +1,9 @@
 from __future__ import annotations
 from ospark.nn.block import Block
-from ospark.nn.layer import Layer
+from ospark.nn.layers import Layer
 from ospark.nn.component.normalization import Normalization, BatchNormalization
 from ospark.nn.component.activation import Activation, relu
-from ospark.nn.layer.convolution_layer import ConvolutionLayer
+from ospark.nn.layers.convolution_layer import ConvolutionLayer
 from typing import List, NoReturn, Optional
 from functools import reduce
 import tensorflow as tf
@@ -67,7 +67,7 @@ class VGGBlock(Block):
                    pooling_strides=pooling_strides)
 
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         for layer in self.layers:
             self.assign(component=layer)
 

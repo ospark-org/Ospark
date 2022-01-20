@@ -44,7 +44,7 @@ class FeedForwardLayer(Layer):
     def dropout_layer(self) -> tf.keras.layers.Dropout:
         return self._dropout_layer
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=ospark.weight.glorot_uniform(
                                 obj_name="mapping2high_dimensional", 
                                 weight_shape=[self.embedding_size, self.scale_rate * self.embedding_size]))

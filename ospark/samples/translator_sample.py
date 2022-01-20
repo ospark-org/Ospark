@@ -9,8 +9,6 @@ import numpy as np
 import json
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 def text_encoder(folder_path: str,
                  vocab_file: str,
                  vocabulary_size: int,
@@ -40,10 +38,8 @@ dataset_name         = 'wmt14_translate/de-en'
 train_vocab_file     = "de_vocab_file"
 target_vocab_file    = "en_vocab_file"
 vocabulary_size      = 40000
+scale_rate           = 4
 
-
-
-scale_rate = 4
 model, batch_size, epoch_number, encoder_block_number, decoder_block_number, head_number, embedding_size = file_name.split(".")[0].split("_")
 
 with open(os.path.join(weight_path, file_name), 'r') as fp:
@@ -54,7 +50,7 @@ ds = tfds.load(data_dir=folder_path,
                name=dataset_name,
                as_supervised=True)
 
-test_data = ds["test"]
+train_data = ds["train"]
 
 
 
@@ -63,7 +59,7 @@ if not os.path.isfile(os.path.join(folder_path, train_vocab_file + ".subwords"))
     print("找不到 text encoder file，讀取 datasets 建立 text encoder")
     train_datasets, target_datasets = zip(*[[train_data.numpy(), target_data.numpy()]
                                             for train_data, target_data
-                                            in test_data])
+                                            in train_data])
 
 
 # 建立/讀取 text_encoder
@@ -88,7 +84,7 @@ exdeep_model = build_exdeep_transformer(encoder_block_number=int(encoder_block_n
 
 
 # 建立 data_generator
-data_generator = TranslateDataGenerator(datasets=test_data,
+data_generator = TranslateDataGenerator(datasets=train_data,
                                         train_data_encoder=train_data_text_encoder,
                                         target_data_encoder=target_data_text_encoder,
                                         batch_size=1,
@@ -102,15 +98,4 @@ predictor = Translator(model=exdeep_model,
 
 predictor.restore_weights(weights=weights)
 
-bleu = BLEU()
-
-scores = []
-for before, reference in test_data.batch(1):
-    input_data = before[0].numpy().decode()
-    reference  = reference[0].numpy().decode()
-    prediction = predictor.predict(input_data=input_data)
-    score = bleu.corpus_score(prediction, reference)
-    scores.append(score.score)
-
-print(np.mean(np.array(scores)))
 

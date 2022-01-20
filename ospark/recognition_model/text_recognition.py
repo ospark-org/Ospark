@@ -1,7 +1,7 @@
 from ospark.nn.model import Model
 from ospark.nn.block import Block
-from ospark.nn.layer import Layer
-from ospark.nn.layer.dense_layer import DenseLayer
+from ospark.nn.layers import Layer
+from ospark.nn.layers.dense_layer import DenseLayer
 from ospark.nn.block.vgg_block import fots_like_vgg
 from ospark.nn.component.activation import Activation, relu
 from ospark.nn.component.normalization import Normalization, BatchNormalization
@@ -24,7 +24,7 @@ class TextRecognition(Model):
         self._sequential_model = sequential_model
 
     @property
-    def classify_layer(self) -> int:
+    def classify_layer(self) -> Layer:
         return self._classify_layer
 
     @property
@@ -35,8 +35,8 @@ class TextRecognition(Model):
     def sequential_model(self) -> List[Block]:
         return self._sequential_model
 
-    def on_creating(self) -> NoReturn:
-        super().on_creating()
+    def in_creating(self) -> NoReturn:
+        super().in_creating()
         for layer in self.sequential_conv:
             self.assign(component=layer)
         for layer in self.sequential_model:

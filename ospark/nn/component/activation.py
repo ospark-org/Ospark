@@ -1,10 +1,18 @@
 import tensorflow as tf 
 from typing import NoReturn
+from ospark.nn.component.basic_module import ModelObject
 
-class Activation:
+class Activation(ModelObject):
+
     def __init_subclass__(cls) -> NoReturn:
         super().__init_subclass__()
         setattr(Activation, cls.__name__, cls)
+
+    def __init__(self):
+        super(Activation, self).__init__(obj_name="activation_function")
+
+    def in_creating(self) -> NoReturn:
+        pass
     
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         raise NotImplementedError()

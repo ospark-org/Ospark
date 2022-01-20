@@ -25,19 +25,15 @@ class TransformerTrainer(Trainer):
                          data_generator=data_generator,
                          epoch_number=epoch_number,
                          optimizer=optimizer,
+                         loss_function=loss_function,
                          save_delegate=save_delegate,
                          save_path=save_path,
                          save_times=save_times,
                          use_auto_graph=use_auto_graph)
-        self._loss_function               = loss_function
         self._use_profiling_phase         = use_profiling_phase
         self._save_init_weights           = save_init_weights
         self._init_weights_path           = init_weights_path or self.save_path.split(".")[0] + "_init.json"
         self._log_file                    = open(self.save_path.split(".")[0] + ".txt", 'w')
-
-    @property
-    def loss_function(self) -> LossFunction:
-        return self._loss_function
 
     @property
     def use_profiling_phase(self) -> bool:
@@ -80,7 +76,7 @@ class TransformerTrainer(Trainer):
             total_accuracies = 0
             start_time       = time.time()
             for batch, dataset in enumerate(self.data_generator):
-                training_data, target_data = dataset
+                training_data, target_data = dataset.training_data, dataset.target_data
                 accuracies, loss_value = self.training_method(training_data, target_data)
                 total_accuracies += accuracies
                 total_loss_value += loss_value

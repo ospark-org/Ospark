@@ -1,11 +1,11 @@
 from __future__ import annotations
 from ospark.nn.block import Block
-from ospark.nn.component.basic_module import BasicModule
+from ospark.nn.component.basic_module import ModelObject
 from typing import List, NoReturn
 from abc import abstractmethod
 import tensorflow as tf
 
-class Cell(BasicModule):
+class Cell(ModelObject):
 
     def __init__(self, obj_name: str) -> NoReturn:
         super().__init__(obj_name=obj_name)
@@ -17,7 +17,7 @@ class Cell(BasicModule):
         return output
 
     @abstractmethod
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         pass
 
     @classmethod

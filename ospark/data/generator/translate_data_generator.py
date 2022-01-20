@@ -2,14 +2,33 @@ from __future__ import annotations
 from typing import Optional, NoReturn, List, Tuple, Callable
 import numpy as np
 import tensorflow as tf
+from . import DataGenerator
 from tensorflow_datasets.core.deprecated.text.subword_text_encoder import SubwordTextEncoder
 import math
 
 
-class TranslateDataGenerator:
+class TranslateDataGenerator(DataGenerator):
+
+    class Dataset:
+
+        def __init__(self):
+            self._training_data = None
+            self._target_data   = None
+
+        @property
+        def training_data(self) -> tf.Tensor:
+            return self._training_data
+
+        @property
+        def target_data(self) -> tf.Tensor:
+            return self._target_data
+
+        def data_setting(self, training_data: tf.Tensor, target_data: tf.Tensor):
+            self._training_data = training_data
+            self._target_data   = target_data
 
     def __init__(self,
-                 train_data: List[str],
+                 training_data: List[str],
                  target_data: List[str],
                  train_data_encoder: SubwordTextEncoder,
                  target_data_encoder: SubwordTextEncoder,
@@ -19,10 +38,8 @@ class TranslateDataGenerator:
                  max_ratio: Optional[float]=None,
                  start_index: Optional[int]=None,
                  padding_range: Optional[int]=None) -> NoReturn:
-        self._train_data          = train_data
-        self._target_data         = target_data
-        self._data_number         = len(train_data)
-        self._batch_size          = batch_size
+        super().__init__(training_data=training_data, target_data=target_data, batch_size=batch_size, initial_step=0)
+        self._data_number         = len(training_data)
         self._train_data_encoder  = train_data_encoder
         self._target_data_encoder = target_data_encoder
         self._train_data_bos      = [train_data_encoder.vocab_size]  # 因為 vocab 中並沒有 bos 及 eos，所以新增額外兩個 index 當作 bos 及 eos
@@ -30,7 +47,7 @@ class TranslateDataGenerator:
         self._train_data_eos      = [train_data_encoder.vocab_size + 1]
         self._target_data_eos     = [target_data_encoder.vocab_size + 1]
         self._filter_rules        = []
-        self._padding_range       = padding_range
+        self._padding_range       = padding_range or 50
         self._max_length          = max_length
         self._next_interval       = None
         if max_length is not None:
@@ -38,26 +55,14 @@ class TranslateDataGenerator:
         self._max_ratio = max_ratio
         if max_ratio is not None:
             self._filter_rules.append(self.filter_ratio)
-        self._max_token           = max_token
+        self._max_token           = max_token or 3000
         self._element_index       = start_index or 0
         self._padded_shape        = ([-1], [-1]) if max_length is None else ([max_length], [max_length])
         self._get_data            = self.batch_get_data if max_token is None else self.token_get_data
 
     @property
-    def train_data(self) -> List[str]:
-        return self._train_data
-
-    @property
-    def target_data(self) -> List[str]:
-        return self._target_data
-
-    @property
     def data_number(self) -> int:
         return self._data_number
-
-    @property
-    def batch_size(self) -> int:
-        return self._batch_size
 
     @property
     def train_data_encoder(self) -> SubwordTextEncoder:
@@ -131,7 +136,7 @@ class TranslateDataGenerator:
         train_data_len = []
         target_data_len = []
         while self.element_index < self.data_number:
-            train_sequence, target_sequence = self.encode_bos_eos(train_sequence=self.train_data[self.element_index],
+            train_sequence, target_sequence = self.encode_bos_eos(train_sequence=self.training_data[self.element_index],
                                                                   target_sequence=self.target_data[self.element_index])
             if self.filter_rules != []:
                 result = [filter_method(train_sequence, target_sequence) for filter_method in self.filter_rules]
@@ -164,7 +169,7 @@ class TranslateDataGenerator:
         target_data_len     = []
         last_padding_length = 0
         while self.element_index < self.data_number:
-            train_sequence, target_sequence = self.encode_bos_eos(train_sequence=self.train_data[self.element_index],
+            train_sequence, target_sequence = self.encode_bos_eos(train_sequence=self.training_data[self.element_index],
                                                                   target_sequence=self.target_data[self.element_index])
             if self.filter_rules != []:
                 result = [filter_method(train_sequence, target_sequence) for filter_method in self.filter_rules]
@@ -211,13 +216,11 @@ class TranslateDataGenerator:
         return tf.convert_to_tensor(train_data, dtype=tf.int64), \
                tf.convert_to_tensor(target_data, dtype=tf.int64)
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
+    def __next__(self) -> Dataset:
         if self.element_index < self.data_number:
             train_data, target_data = self._get_data()
-            return train_data, target_data
+            self.dataset.data_setting(training_data=train_data, target_data=target_data)
+            return self.dataset
         self.reset()
         raise StopIteration()
 
@@ -239,7 +242,7 @@ class TranslateDataGenerator:
                             max_ratio: Optional[float]=None,
                             start_index: Optional[int]=None,
                             padding_range: Optional[int]=None) -> tf.data.Dataset:
-        generator = cls(train_data=train_data,
+        generator = cls(training_data=train_data,
                         target_data=target_data,
                         train_data_encoder=train_data_encoder,
                         target_data_encoder=target_data_encoder,

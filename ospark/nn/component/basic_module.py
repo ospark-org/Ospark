@@ -4,7 +4,7 @@ from ospark.nn.component.weight import Weight
 from typing import NoReturn, Optional, List, Union
 
 
-class BasicModule(ABC):
+class ModelObject(ABC):
 
     def __init__(self, obj_name: str):
         self._obj_name = obj_name
@@ -18,14 +18,14 @@ class BasicModule(ABC):
     def assigned(self) -> Assigned:
         return self._assigned
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         pass
 
-    def assign(self, component: Union[BasicModule, Weight], name: Optional[str]=None) -> NoReturn:
+    def assign(self, component: Union[ModelObject, Weight], name: Optional[str]=None) -> NoReturn:
         self.assigned.assign(component, name)
 
     def create(self, prefix_word: Optional[str]=None) -> NoReturn:
-        self.on_creating()
+        self.in_creating()
         if prefix_word is None:
             prefix_word  = f"model_{self.obj_name}"
         else:
@@ -43,14 +43,15 @@ class Assigned:
     def component_names(self) -> List[str]:
         return self._component_names
 
-    def assign(self, component: BasicModule, name: Optional[str]=None) -> NoReturn:
+    def assign(self, component: ModelObject, name: Optional[str]=None) -> NoReturn:
         if name is None:
             name = component.obj_name
         setattr(self, name, component)
         self._component_names.append(name)
 
     def __getattr__(self, name):
-        return self.__dict__[name]
+        if name != "is_tensor_like":
+            return self.__dict__[name]
 
     def __getattribute__(self, name: str):
         obj = super().__getattribute__(name)
@@ -59,12 +60,7 @@ class Assigned:
         else:
             return obj
 
-    def __iter__(self) -> Assigned:
-        return self
-
-    def __next__(self):
-        if self.component_names != []:
-            obj_name = self.component_names.pop()
-            obj = self.__getattr__(obj_name)
-            return obj
-        raise StopIteration
+    def __iter__(self) -> ModelObject:
+        for component_name in self.component_names:
+            obj = self.__getattr__(component_name)
+            yield obj

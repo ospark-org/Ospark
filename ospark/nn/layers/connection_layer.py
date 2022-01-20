@@ -1,5 +1,5 @@
-from ospark.nn.layer.convolution_layer import ConvolutionLayer
-from ospark.nn.layer import Layer
+from ospark.nn.layers.convolution_layer import ConvolutionLayer
+from ospark.nn.layers import Layer
 from typing import NoReturn
 import tensorflow as tf
 
@@ -57,7 +57,7 @@ class ConnectionLayer(Layer):
                                                      padding="SAME",
                                                      trainable=self.trainable)
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=self.conv_1)
         self.assign(component=self.conv_2)
 

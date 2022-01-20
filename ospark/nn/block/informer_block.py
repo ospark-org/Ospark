@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import NoReturn, Optional
-from ospark.nn.layer.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
-from ospark.nn.layer.prob_sparse import ProbSparseAttentionLayer
-from ospark.nn.layer.distilling_layer import DistillingLayer
-from ospark.nn.layer.feed_forward import FeedForwardLayer
+from ospark.nn.layers.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
+from ospark.nn.layers.prob_sparse import ProbSparseAttentionLayer
+from ospark.nn.layers.distilling_layer import DistillingLayer
+from ospark.nn.layers.feed_forward import FeedForwardLayer
 from ospark.nn.component.activation import gelu
 from . import Block
 import tensorflow as tf
@@ -46,7 +46,7 @@ class InformerEncoderBlock(Block):
                    feedforward=feedforward_cls(obj_name="feedforward", embedding_size=embedding_size, scale_rate=scale_rate),
                    distilling=distilling_cls(obj_name="distilling", embedding_size=embedding_size))
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=self.attention, name="attention")
         self.assign(component=self.feedforward, name="feedforward")
         self.assign(component=self.distilling, name="distilling")
@@ -87,7 +87,7 @@ class InformerDecoderBlock(Block):
     def feedforward(self) -> FeedForwardLayer:
         return self._feedforward
 
-    def on_creating(self) -> NoReturn:
+    def in_creating(self) -> NoReturn:
         self.assign(component=self.attention, name="attention")
         self.assign(component=self.encode_decode_attention, name="encode_decode_attention")
         self.assign(component=self.feedforward, name="feedforward")

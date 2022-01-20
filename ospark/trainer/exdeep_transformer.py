@@ -94,7 +94,7 @@ class ExdeepTransformerTrainer(Trainer):
             total_accuracies = 0
             start_time       = time.time()
             for batch, dataset in enumerate(self.data_generator):
-                training_data, target_data = dataset
+                training_data, target_data = dataset.training_data, dataset.target_data
                 accuracies, loss_value = self.training_method(training_data, target_data)
                 total_accuracies += accuracies
                 total_loss_value += loss_value
