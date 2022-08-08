@@ -105,8 +105,8 @@ class ExdeepTransformerTrainer(Trainer):
                   f'Accuracy {total_accuracies / training_count:.4f}')
             print(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
             if self.will_save(epoch_number=epoch):
-                self.save_delegate.save(weights=self.weights_operator.weights)
-        self.save(weights=self.weights_operator.weights)
+                self.save_delegate.save(weights=self.weights_operator.weights, path=self.save_path)
+        self.save(weights=self.weights_operator.weights, path=self.save_path)
         self.log_file.close()
 
     def calculate_accuracy(self, prediction: tf.Tensor, target: tf.Tensor) -> tf.Tensor:

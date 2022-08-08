@@ -46,7 +46,7 @@ train_vocab_file     = "pt_vocab_file"
 target_vocab_file    = "en_vocab_file"
 
 batch_size           = 8
-max_length           = 100
+max_length           = None
 take_number          = 1000
 encoder_block_number = 4
 decoder_block_number = 4
@@ -124,7 +124,7 @@ else:
 print("建立模型")
 exdeep_model = build_exdeep_transformer(encoder_block_number=encoder_block_number,
                                         decoder_block_number=decoder_block_number,
-                                        retrained_weights=weights,
+                                        trained_weights=weights,
                                         head_number=head_number,
                                         embedding_size=embedding_size,
                                         scale_rate=scale_rate,
