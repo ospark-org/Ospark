@@ -2,9 +2,12 @@ from __future__ import annotations
 from ospark.data.generator import DataGenerator
 from ospark.utility.padding_method import PaddingManager
 from typing import List, Optional, Set, Tuple
+from ospark.data.path import DataPath
+from ospark.data.folder import DataFolder
 from PIL import Image
 import tensorflow as tf
 import numpy as np
+import pathlib
 import random
 import copy
 import cv2
@@ -48,13 +51,10 @@ class FOTSDataGenerator(DataGenerator):
             self._bbox_points   = bbox_points
 
     def __init__(self,
-                 training_folder: str,
-                 labelling_folder: str,
-                 training_files_name: List[str],
-                 target_files_name: List[str],
+                 data_folder: DataFolder,
                  batch_size: int,
-                 filter_height: int,
-                 filter_words: Set[str],
+                 height_threshold: int,
+                 filtered_words: Set[str],
                  target_size: list,
                  image_shrink_scale: float,
                  padding_method: Optional[str]="center",
@@ -63,11 +63,11 @@ class FOTSDataGenerator(DataGenerator):
                  use_shuffle: Optional[bool]=False):
         """
 
-        :param training_files_name:
-        :param target_files_name:
+        :param training_folder:
+        :param labeling_folder:
         :param batch_size:
-        :param filter_height:
-        :param filter_words:
+        :param height_threshold:
+        :param filtered_words:
         image_size: np.ndarray
             image size [width, height]
         :param image_shrink_scale:
@@ -77,36 +77,41 @@ class FOTSDataGenerator(DataGenerator):
         :param initial_step:
         """
 
-        super().__init__(training_data=training_files_name,
-                         target_data=target_files_name,
-                         batch_size=batch_size,
-                         initial_step=initial_step)
-        self._training_folder       = training_folder
-        self._labelling_folder      = labelling_folder
-        self._filter_height         = filter_height
-        self._filter_words          = filter_words
+        self._folder                = data_folder
+        self._height_threshold      = height_threshold
+        self._filtered_words        = filtered_words
         self._shrink_image          = image_shrink_scale
         self._bbox_shrink_scale     = bbox_shrink_scale
         self._target_size           = np.array(target_size)
         self._padding               = PaddingManager(padding_method)
-        self._image_shrunk_size     = (np.array(target_size).astype(np.float32) * image_shrink_scale).astype(np.int32)
-        self._blank_image           = np.zeros(shape=[self.image_shrunk_size[1], self.image_shrunk_size[0], 1])
+        self._image_shrink_size     = (np.array(target_size).astype(np.float32) * image_shrink_scale).astype(np.int32)
+        self._blank_image           = np.zeros(shape=[self.image_shrink_size[1], self.image_shrink_size[0], 1])
         self._coordinate_matrix     = self.create_coordinate_matrix()
         self._basic_move_distance   = np.array([[1, 1], [-1, 1], [-1, -1], [1, -1]])
-        self._indexed_training_data = self.make_indexed_data(self.training_data)
-        self._indexed_reference     = self.make_indexed_data(self.target_data)
-        self._data_indices          = [i for i in self.indexed_training_data.keys()]
+        self._data_indices          = [i for i in self._folder.indexed_training_data.keys()]
+        self._data_path             = DataPath(batch_size=batch_size,
+                                               total_data=len(self._folder.training_files),
+                                               index_table=list(self.folder.indexed_training_data.keys()))
         self._shuffle               = use_shuffle
         if self.shuffle:
             random.shuffle(self._data_indices)
 
-    @property
-    def filter_height(self) -> int:
-        return self._filter_height
+        super().__init__(training_data=self._folder.training_files,
+                         target_data=self._folder.labeling_files,
+                         batch_size=batch_size,
+                         initial_step=initial_step)
 
     @property
-    def filter_words(self) -> Set[str]:
-        return self._filter_words
+    def folder(self) -> DataFolder:
+        return self._folder
+
+    @property
+    def height_threshold(self) -> int:
+        return self._height_threshold
+
+    @property
+    def filtered_words(self) -> Set[str]:
+        return self._filtered_words
 
     @property
     def shrink_image(self) -> float:
@@ -125,8 +130,8 @@ class FOTSDataGenerator(DataGenerator):
         return self._padding
 
     @property
-    def image_shrunk_size(self) -> np.ndarray:
-        return self._image_shrunk_size
+    def image_shrink_size(self) -> np.ndarray:
+        return self._image_shrink_size
 
     @property
     def blank_image(self) -> np.ndarray:
@@ -137,24 +142,8 @@ class FOTSDataGenerator(DataGenerator):
         return self._coordinate_matrix
 
     @property
-    def training_folder(self) -> str:
-        return self._training_folder
-
-    @property
-    def labelling_folder(self) -> str:
-        return self._labelling_folder
-
-    @property
     def data_indices(self) -> list:
         return self._data_indices
-
-    @property
-    def indexed_training_data(self) -> dict:
-        return self._indexed_training_data
-
-    @property
-    def indexed_reference(self) -> dict:
-        return self._indexed_reference
 
     @property
     def shuffle(self) -> bool:
@@ -168,8 +157,8 @@ class FOTSDataGenerator(DataGenerator):
              coordinate_matrix: np.ndarray
                 shape is [y_size, x_size, axis_number]
         """
-        x_axis = np.tile(np.arange(self.image_shrunk_size[0])[np.newaxis, :, np.newaxis], [self.image_shrunk_size[1], 1, 1])
-        y_axis = np.tile(np.arange(self.image_shrunk_size[1])[:, np.newaxis, np.newaxis], [1, self.image_shrunk_size[0], 1])
+        x_axis = np.tile(np.arange(self.image_shrink_size[0])[np.newaxis, :, np.newaxis], [self.image_shrink_size[1], 1, 1])
+        y_axis = np.tile(np.arange(self.image_shrink_size[1])[:, np.newaxis, np.newaxis], [1, self.image_shrink_size[0], 1])
         return np.concatenate([x_axis, y_axis], axis=-1)
 
     def __iter__(self) -> FOTSDataGenerator:
@@ -184,15 +173,12 @@ class FOTSDataGenerator(DataGenerator):
         raise StopIteration()
 
     def _get_data(self) -> Dataset:
-        start_point = self.batch_size * self.step
-        end_point   = min(len(self.training_data), start_point + self.batch_size)
-        indices     = self.data_indices[start_point: end_point]
-
-        training_data_paths = [self.indexed_training_data[index] for index in indices]
-        training_data       = self.process_training_data(training_data_paths)
-        target_data_paths   = [self.indexed_reference[index] for index in indices]
-
-        target_image, words, bbox_points = self.process_target_data(target_data_paths)
+        for index in self._data_path.range(step=self.step):
+            training_data_path, labeling_data_path = self.folder.get_files(index=index)
+            self._data_path.training_data_paths = training_data_path
+            self._data_path.label_data_paths = labeling_data_path
+        training_data = self.process_training_data(self._data_path.training_data_paths)
+        target_image, words, bbox_points = self.process_target_data(self._data_path.label_data_paths)
         self.dataset.data_setting(training_data=training_data,
                                   target_data=target_image,
                                   words=words,
@@ -202,7 +188,7 @@ class FOTSDataGenerator(DataGenerator):
     def process_training_data(self, paths: List[str]) -> tf.Tensor:
         imgs = []
         for path in paths:
-            img = Image.open(os.path.join(self.training_folder, path))
+            img = Image.open(path)
             img = self.padding_and_resize(img)
             imgs.append(img[np.newaxis, :, :, :])
         return tf.cast(tf.concat(imgs, axis=0), dtype=tf.float32)
@@ -223,8 +209,8 @@ class FOTSDataGenerator(DataGenerator):
         words_stacked       = []
         bbox_points_stacked = []
         for path in paths:
-            detection_map = np.zeros(shape=[self.image_shrunk_size[1], self.image_shrunk_size[0], 6])
-            fp = open(os.path.join(self.labelling_folder, path), 'r', encoding="utf-8-sig")
+            detection_map = np.zeros(shape=[self.image_shrink_size[1], self.image_shrink_size[0], 6])
+            fp = open(path, 'r', encoding="utf-8-sig")
             points = []
             words  = []
             for datasets in fp:
@@ -242,13 +228,13 @@ class FOTSDataGenerator(DataGenerator):
                     width       = _width
 
                 # filtered according origin image size.
-                if height / self.shrink_image < self.filter_height or width / self.shrink_image < self.filter_height:
+                if height / self.shrink_image < self.height_threshold or width / self.shrink_image < self.height_threshold:
                     continue
 
                 detection_map += self.create_detection_map(bbox_points=bbox_points)
                 target_word    = ",".join(target[8:])
 
-                if target_word in self.filter_words:
+                if target_word in self.filtered_words:
                     continue
                 points.append(bbox_points)
                 words.append(target_word)
@@ -323,47 +309,3 @@ class FOTSDataGenerator(DataGenerator):
         coefficient = 1 if y_partition >= 0 else -1
         angle = np.arccos(x_partition / length) / coefficient
         return angle
-
-    def make_indexed_data(self, files: List[str]) -> dict:
-        files.sort()
-        filtered_file = [string for string in files if any([char.isdigit() for char in string])]
-        datasets = map(self._indexed, filtered_file)
-        return dict(datasets)
-
-    def _indexed(self, file_name: str) -> Tuple[int, str]:
-        number_index = np.where(np.array([char.isdigit() for char in file_name]) == True)[0]
-        index        = int("".join([file_name[i] for i in number_index]))
-        return index, file_name
-
-
-if __name__ == "__main__":
-    # 檢查結果是否正確，檢查 image size 需不需要前後對調，sorted file name, random sample, croups
-
-    training_data_folder = "/Users/abnertsai/Documents/Ospark/ospark/samples/dataset/ICDAR/training_data"
-    target_data_folder   = "/Users/abnertsai/Documents/Ospark/ospark/samples/dataset/ICDAR/ch4_training_localization_transcription_gt"
-    training_list        = os.listdir(training_data_folder)
-    target_list          = os.listdir(target_data_folder)
-    data_generator       = FOTSDataGenerator(training_folder=training_data_folder,
-                                             labelling_folder=target_data_folder,
-                                             training_files_name=training_list,
-                                             target_files_name=target_list,
-                                             batch_size=4,
-                                             filter_height=8,
-                                             filter_words={"###"},
-                                             target_size=[1280, 720],
-                                             image_shrink_scale=0.25)
-    for training_data, target_image, words, bbox_points in data_generator:
-        print(words, bbox_points)
-        for imag, target_image, bbox_point in zip(training_data, target_image, bbox_points):
-            # img = Image.fromarray(imag.numpy().astype(np.uint8))
-            # img.show()
-            index = np.where(target_image[:, :, 2].numpy() > 0)
-            # print(target_image[:, :, 1:5].numpy()[index])
-            # tar_img = Image.fromarray(target_image[:, :, 1].numpy().astype(np.uint8) * 20)
-            # tar_img = tar_img.resize((1280, 720), Image.BILINEAR)
-            # tar_img.show()
-        break
-
-
-
-

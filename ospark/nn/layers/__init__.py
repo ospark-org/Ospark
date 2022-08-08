@@ -2,21 +2,15 @@ from typing import NoReturn, Optional
 from ospark.nn.component.basic_module import ModelObject
 import tensorflow as tf
 
+
+
 class Layer(ModelObject):
 
-    def __init__(self, obj_name: str, is_training: Optional[bool]=False) -> NoReturn:
-        super().__init__(obj_name=obj_name)
-        self._is_training = is_training
-
-    @property
-    def is_training(self) -> bool:
-        return self._is_training
+    def __init__(self, obj_name: str, is_training: Optional[bool]=None) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training)
 
     def in_creating(self) -> NoReturn:
         raise NotImplementedError()
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, *args, **kwargs) -> tf.Tensor:
         raise NotImplementedError()
-
-    def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
-        return self.model(input_data)

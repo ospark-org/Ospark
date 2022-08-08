@@ -1,18 +1,11 @@
 import tensorflow as tf 
 from typing import NoReturn
-from ospark.nn.component.basic_module import ModelObject
 
-class Activation(ModelObject):
+class Activation:
 
     def __init_subclass__(cls) -> NoReturn:
         super().__init_subclass__()
         setattr(Activation, cls.__name__, cls)
-
-    def __init__(self):
-        super(Activation, self).__init__(obj_name="activation_function")
-
-    def in_creating(self) -> NoReturn:
-        pass
     
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         raise NotImplementedError()
@@ -27,17 +20,19 @@ class PassActivation(Activation):
         return input_data
 
 
-class relu(Activation):
+class ReLU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.relu(input_data)
 
 
-class elu(Activation):
+class ELU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.elu(input_data)
 
 
-class leakyrelu(Activation):
+class LeakyReLU(Activation):
 
     @property
     def alpha(self) -> tf.float32:
@@ -51,16 +46,19 @@ class leakyrelu(Activation):
         return tf.nn.leaky_relu(input_data, self.alpha)
 
 
-class selu(Activation):
+class SELU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.selu(input_data)
 
 
-class crelu(Activation):
+class CReLU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.crelu(input_data)
 
 
-class gelu(Activation):
+class GELU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.gelu(input_data)

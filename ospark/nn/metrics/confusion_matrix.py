@@ -27,12 +27,12 @@ class ConfusionMatrix(Metrics):
 
     def calculate_start(self) -> dict:
         metrics = {}
-        catrgory = sorted(self.class_category.keys(), key=lambda x: self.class_category[x])
+        category = sorted(self.class_category.keys(), key=lambda x: self.class_category[x])
         basic_matrix = np.zeros(shape=[len(self.class_category), len(self.class_category)])
         for index, count in self.counter.items():
             basic_matrix[index] = count
         print(basic_matrix)
         metrics["accuracy"]  = np.sum(np.diagonal(basic_matrix)) / np.sum(basic_matrix)
-        metrics["recall"]    = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=1)))
-        metrics["precision"] = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=0)))
+        metrics["recall"]    = dict(zip(category, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=1)))
+        metrics["precision"] = dict(zip(category, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=0)))
         return metrics

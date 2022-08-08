@@ -1,7 +1,8 @@
 from ospark.nn.optimizer.learning_rate_schedule import TransformerWarmup
-from ospark.former.builder import build_exdeep_transformer
+from ospark.models.builder import build_exdeep_transformer, build_performer
 from ospark.data.generator.translate_data_generator import TranslateDataGenerator
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
+from ospark.trainer.transformer_trainer import TransformerTrainer
 from ospark.nn.loss_function import SparseCategoricalCrossEntropy
 from typing import Optional
 import tensorflow_datasets as tfds
@@ -32,26 +33,33 @@ def text_encoder(folder_path: str,
 
 folder_path          = "/Users/abnertsai/Documents/Gitlab/self-attention/tensorflow_datasets" #
 # folder_path          = os.path.dirname(os.path.abspath(__file__))
-dataset_name         = 'wmt14_translate/de-en'
+
+# dataset_name         = 'wmt14_translate/de-en'
 # train_vocab_file     = "de_vocab_file"
 # target_vocab_file    = "en_vocab_file"
-train_vocab_file     = "en_vocab_file"
-target_vocab_file    = "de_vocab_file"
-batch_size           = 16
+# train_vocab_file     = "en_vocab_file"
+# target_vocab_file    = "de_vocab_file"
+
+
+dataset_name         = 'ted_hrlr_translate/pt_to_en'
+train_vocab_file     = "pt_vocab_file"
+target_vocab_file    = "en_vocab_file"
+
+batch_size           = 8
 max_length           = 100
-take_number          = 30000
-encoder_block_number = 60
-decoder_block_number = 12
+take_number          = 1000
+encoder_block_number = 4
+decoder_block_number = 4
 head_number          = 4
 embedding_size       = 128
 scale_rate           = 4
-dropout_rate         = 0.3
-use_graph_mode       = True
+dropout_rate         = 0.0
+use_graph_mode       = False
 epoch_number         = 50
 save_times           = 5
 vocabulary_size      = 32000
-use_profiling_phase  = True
-save_init_weights    = True
+use_profiling_phase  = False
+save_init_weights    = False
 use_restore          = True
 
 
@@ -68,12 +76,13 @@ init_weights_path = os.path.join(folder_path,
             f"{encoder_block_number}_{decoder_block_number}_{head_number}_{embedding_size}.json")
 
 # 讀取訓練用的 datasets wmt14
+print("讀取訓練用資料")
 ds = tfds.load(data_dir=folder_path,
                name=dataset_name,
                as_supervised=True)
 
 train_examples, val_examples = ds["train"], ds["validation"]
-
+print(type(train_examples))
 train_datasets, target_datasets = None, None
 if not os.path.isfile(os.path.join(folder_path, train_vocab_file + ".subwords")):
     print("找不到 text encoder file，讀取 datasets 建立 text encoder")
@@ -92,9 +101,10 @@ target_data_text_encoder = text_encoder(folder_path=folder_path,
                                         vocabulary_size=vocabulary_size,
                                         datasets=target_datasets)
 
-
-# 建立 data_generator
+print("拆分 train data")
 training_data, target_data = list(zip(*train_examples))
+# 建立 data_generator
+print("建立 data generator")
 data_generator = TranslateDataGenerator(training_data=training_data,
                                         target_data=target_data,
                                         train_data_encoder=train_data_text_encoder,
@@ -103,9 +113,18 @@ data_generator = TranslateDataGenerator(training_data=training_data,
                                         max_length=max_length,
                                         max_token=3000)
 
-# 建立模型
+if os.path.isfile(init_weights_path) and use_restore:
+    print("讀取 init weights")
+    with open(init_weights_path, 'r') as fp:
+        weights = json.load(fp)
+else:
+    print("Use random weights")
+    weights = None
+
+print("建立模型")
 exdeep_model = build_exdeep_transformer(encoder_block_number=encoder_block_number,
                                         decoder_block_number=decoder_block_number,
+                                        retrained_weights=weights,
                                         head_number=head_number,
                                         embedding_size=embedding_size,
                                         scale_rate=scale_rate,
@@ -115,6 +134,17 @@ exdeep_model = build_exdeep_transformer(encoder_block_number=encoder_block_numbe
                                         is_training=True,
                                         dropout_rate=dropout_rate)
 
+# performer_model = build_performer(block_number=encoder_block_number,
+#                                   head_number=head_number,
+#                                   embedding_size=embedding_size,
+#                                   scale_rate=scale_rate,
+#                                   random_projections_number=16,
+#                                   class_number=target_data_text_encoder.vocab_size + 2,
+#                                   encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
+#                                   decoder_corpus_size=target_data_text_encoder.vocab_size + 2,
+#                                   is_training=True,
+#                                   dropout_rate=dropout_rate)
+
 # 設定 learning_rate、optimizer、loss_function
 learning_rate = TransformerWarmup(model_dimension=embedding_size, warmup_step=4000.)
 # optimizer     = tf.keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
@@ -122,7 +152,7 @@ optimizer     = tfa.optimizers.RectifiedAdam(learning_rate=learning_rate, beta_1
 loss_function = SparseCategoricalCrossEntropy()
 
 
-# print("建立 trainer")
+print("建立 trainer")
 trainer = ExdeepTransformerTrainer(data_generator=data_generator,
                                    model=exdeep_model,
                                    epoch_number=epoch_number,
@@ -135,13 +165,17 @@ trainer = ExdeepTransformerTrainer(data_generator=data_generator,
                                    save_init_weights=save_init_weights,
                                    init_weights_path=init_weights_path)
 
-if os.path.isfile(init_weights_path) and use_restore:
-    print("讀取 init weights")
-    with open(init_weights_path, 'r') as fp:
-        weights = json.load(fp)
-    trainer.restore_weights(weights=weights)
-else:
-    print("Use random weights")
+# trainer = TransformerTrainer(data_generator=data_generator,
+#                              model=performer_model,
+#                              epoch_number=epoch_number,
+#                              optimizer=optimizer,
+#                              loss_function=loss_function,
+#                              save_times=save_times,
+#                              save_path=save_path,
+#                              use_auto_graph=use_graph_mode,
+#                              save_init_weights=save_init_weights,
+#                              init_weights_path=init_weights_path)
+
 
 print("開始訓練")
 trainer.start()

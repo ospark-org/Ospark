@@ -2,6 +2,7 @@ from ospark.nn.layers import Layer
 from typing import List, NoReturn, Optional, Callable, Tuple, Union
 from ospark.nn.component.activation import Activation, PassActivation
 from functools import reduce
+from ospark import Weight
 import tensorflow as tf
 import ospark
 
@@ -12,9 +13,10 @@ class DenseLayer(Layer):
                  obj_name:str,
                  input_dimension: int,
                  hidden_dimension: List[int],
+                 is_training: Optional[bool]=None,
                  activation: Optional[str]=None,
                  use_bias: Optional[bool]=True):
-        super().__init__(obj_name=obj_name)
+        super().__init__(obj_name=obj_name, is_training=is_training)
         self._input_dimension  = input_dimension
         self._hidden_dimension = hidden_dimension
         self._layers_name      = []
@@ -54,21 +56,19 @@ class DenseLayer(Layer):
                 input_dimension = self.hidden_dimension[i - 1]
             name = f"layer_{i}"
             self._layers_name.append(name)
-            weight = ospark.weight.glorot_uniform(obj_name=name, weight_shape=[input_dimension, output_dimension])
-            self.assign(component=weight)
+            setattr(self, name, ospark.weight.glorot_uniform(obj_name=name, shape=[input_dimension, output_dimension]))
             if self.use_bias:
-                bias = ospark.weight.zeros(obj_name=name + "_bias", weight_shape=[output_dimension])
-                self.assign(component=bias)
+                setattr(self, name + "_bias", ospark.weight.zeros(obj_name=name + "_bias", shape=[output_dimension]))
 
-    def bias_forward(self, input_data: tf.Tensor, weight: Tuple[tf.Tensor, tf.Tensor]) -> tf.Tensor:
+    def bias_forward(self, input_data: tf.Tensor, weight: Tuple[Weight, Weight]) -> tf.Tensor:
         return self.activation(tf.matmul(input_data, weight[0]) + weight[1])
 
     def no_bias_forward(self, input_data: tf.Tensor, weight: tf.Tensor) -> tf.Tensor:
         return self.activation(tf.matmul(input_data, weight))
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        layers = [(self.assigned.__getattribute__(name=name), self.assigned.__getattribute__(name=name + "_bias"))
-                  if self.use_bias else self.assigned.__getattribute__(name=name)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        layers = [(getattr(self, name), getattr(self, name + "_bias"))
+                  if self.use_bias else getattr(self, name)
                   for name in self.layers_name]
         output = reduce(self.forward, layers, input_data)
         return output

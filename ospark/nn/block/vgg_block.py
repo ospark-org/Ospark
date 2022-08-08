@@ -1,8 +1,8 @@
 from __future__ import annotations
 from ospark.nn.block import Block
 from ospark.nn.layers import Layer
-from ospark.nn.component.normalization import Normalization, BatchNormalization
-from ospark.nn.component.activation import Activation, relu
+from ospark.nn.layers.normalization import Normalization, BatchNormalization
+from ospark.nn.component.activation import Activation, ReLU
 from ospark.nn.layers.convolution_layer import ConvolutionLayer
 from typing import List, NoReturn, Optional
 from functools import reduce
@@ -71,8 +71,8 @@ class VGGBlock(Block):
         for layer in self.layers:
             self.assign(component=layer)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        layer_output = reduce(lambda output, layer: layer(output), self.layers, input_data)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        layer_output = reduce(lambda output, layer: layer.pipeline(output), self.layers, input_data)
         block_output = tf.nn.max_pool2d(input=layer_output,
                                         strides=self.pooling_sreides,
                                         ksize=self.pooling_size,
@@ -107,9 +107,10 @@ def fots_like_vgg(input_channel: int,
                                               output_channels=layer_channels,
                                               pooling_size=[1, 2, 1, 1],
                                               pooling_strides=[1, 2, 1, 1],
-                                              normalization=[BatchNormalization(input_depth=channel,
-                                                                                trainable=trainable) for channel in layer_channels],
-                                              activation=[relu() for i in layer_channels])
+                                              normalization=[BatchNormalization(obj_name="batch_norm",
+                                                                                input_depth=channel,
+                                                                                is_training=trainable) for channel in layer_channels],
+                                              activation=[ReLU() for i in layer_channels])
         vgg_blocks.append(vgg_block)
     return vgg_blocks
 

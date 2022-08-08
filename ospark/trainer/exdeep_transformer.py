@@ -1,17 +1,15 @@
 from ospark.trainer import *
-from ospark.former.exdeep_transformer import ExdeepTransformer
 from ospark.nn.loss_function import LossFunction
+from ospark import Model
 import tensorflow as tf
 import time
-import gc
-from ospark.show_memory import show_memory
 
 
 class ExdeepTransformerTrainer(Trainer):
 
     def __init__(self,
                  data_generator: DataGenerator,
-                 model: ExdeepTransformer,
+                 model: Model,
                  epoch_number: int,
                  optimizer: Optimizer,
                  loss_function: LossFunction,
@@ -30,16 +28,12 @@ class ExdeepTransformerTrainer(Trainer):
                          save_delegate=save_delegate,
                          save_path=save_path,
                          save_times=save_times,
-                         use_auto_graph=use_auto_graph)
-        self._loss_function               = loss_function
+                         use_auto_graph=use_auto_graph,
+                         loss_function=loss_function)
         self._use_profiling_phase         = use_profiling_phase
         self._save_init_weights           = save_init_weights
         self._init_weights_path           = init_weights_path or self.save_path.split(".")[0] + "_init.json"
         self._log_file                    = open(self.save_path.split(".")[0] + ".txt", 'w')
-
-    @property
-    def loss_function(self) -> LossFunction:
-        return self._loss_function
 
     @property
     def use_profiling_phase(self) -> bool:
@@ -66,13 +60,13 @@ class ExdeepTransformerTrainer(Trainer):
         return self.train_step(train_data=train_data, target_data=target_data)
 
     def start(self) -> NoReturn:
-        self.model.create()
         if self.save_init_weights:
-            weights = self.weights_operator.get
+            weights = self.weights_operator.weights
             self.save(weights=weights, path=self.init_weights_path)
 
         if self.use_profiling_phase:
-            profiling_encoder_input, profiling_decoder_input = next(iter(self.data_generator))
+            dataset = next(iter(self.data_generator))
+            profiling_encoder_input, profiling_decoder_input = dataset.training_data, dataset.target_data
 
             print("Profiling phase start.")
             self.model.profiling_phase(encoder_input=profiling_encoder_input,
@@ -99,6 +93,7 @@ class ExdeepTransformerTrainer(Trainer):
                 total_accuracies += accuracies
                 total_loss_value += loss_value
                 training_count   += 1
+                print(loss_value)
                 if (batch + 1) % 50 == 0:
                     print(f"Epoch {epoch + 1} Batch {batch} Loss {loss_value:.4f} Accuracy {accuracies:.4f}")
 
@@ -110,8 +105,8 @@ class ExdeepTransformerTrainer(Trainer):
                   f'Accuracy {total_accuracies / training_count:.4f}')
             print(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
             if self.will_save(epoch_number=epoch):
-                self.save_delegate.save(weights=self.weights_operator.get)
-        self.save(weights=self.weights_operator.get)
+                self.save_delegate.save(weights=self.weights_operator.weights)
+        self.save(weights=self.weights_operator.weights)
         self.log_file.close()
 
     def calculate_accuracy(self, prediction: tf.Tensor, target: tf.Tensor) -> tf.Tensor:
@@ -124,10 +119,10 @@ class ExdeepTransformerTrainer(Trainer):
 
     def train_step(self, train_data: tf.Tensor, target_data: tf.Tensor):
         with tf.GradientTape() as tape:
-            prediction = self.model(encoder_input=train_data, decoder_input=target_data[:, :-1])
+            weights    = self.model.training_weights
+            prediction = self.model.pipeline(encoder_input=train_data, decoder_input=target_data[:, :-1])
             loss_value = self.loss_function(prediction=prediction, target_data=target_data[:, 1:])
             accuracies = self.calculate_accuracy(prediction=prediction, target=target_data[:, 1:])
-            weights    = self.weights_operator.collect()
             tape.watch(weights)
         gradients  = tape.gradient(loss_value, weights)
         self.optimizer.apply_gradients(zip(gradients, weights))

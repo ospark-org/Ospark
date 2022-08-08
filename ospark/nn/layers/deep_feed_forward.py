@@ -10,14 +10,12 @@ class DeepFeedForwardLayer(FeedForwardLayer):
                  embedding_size: int,
                  scale_rate: int,
                  dropout_rate: float,
-                 is_training: Optional[bool]=False,
-                 activation: Optional[Activation]=None,
-                 normalization: Optional[Normalization]=None) -> NoReturn:
+                 is_training: Optional[bool]=None,
+                 activation: Optional[Activation]=None) -> NoReturn:
         super(DeepFeedForwardLayer, self).__init__(obj_name=obj_name,
                                                    embedding_size=embedding_size,
                                                    scale_rate=scale_rate,
                                                    activation=activation,
-                                                   normalization=normalization,
                                                    dropout_rate=dropout_rate,
                                                    is_training=is_training)
         self._res_adaptive_value = 1

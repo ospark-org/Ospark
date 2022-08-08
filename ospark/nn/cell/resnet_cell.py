@@ -50,7 +50,7 @@ class ResnetCell(Cell):
                                   main_channel=main_channel,
                                   scale_rate=scale_rate,
                                   strides=strides,
-                                  shortcut_conv=True,
+                                  use_shortcut_conv=True,
                                   trainable=trainable)
             else:
                 block = block_cls(obj_name=name,
@@ -66,10 +66,10 @@ class ResnetCell(Cell):
         for block in self.blocks:
             self.assign(component=block)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
         for block in self.blocks:
-            output = block(output)
+            output = block.pipeline(output)
         return output
 
 

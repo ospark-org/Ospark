@@ -1,10 +1,10 @@
 from ospark.predictor import Predictor
-from ospark.detection_model.pixel_wise import PixelWiseDetection
-from ospark.recognition_model.text_recognition import TextRecognition
+from ospark.models.pixel_wise import PixelWiseDetection
+from ospark.models.text_recognition import TextRecognition
 from ospark.utility.roi_rotate import RoIRotate
 from ospark.nn.component.weight import WeightOperator
 from ospark.utility.non_max_suppression import NonMaxSuppression
-from typing import Tuple, Optional, NoReturn, List
+from typing import Tuple, Optional, NoReturn
 import tensorflow as tf
 import numpy as np
 

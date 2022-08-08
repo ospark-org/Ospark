@@ -1,28 +1,37 @@
-from ospark.nn.component.basic_module import ModelObject
-from ospark.nn.layers import Layer
-from typing import NoReturn
-
+from ospark.nn.component.basic_module import ModelObject, MetaObject
+from typing import Optional, NoReturn, List
+from ospark import WeightOperator
 import tensorflow as tf
 
-class Model(ModelObject):
 
-    def __init__(self,
-                 obj_name: str,
-                 classify_layer: Layer):
-        super().__init__(obj_name=obj_name)
-        self._classify_layer = classify_layer
+class ModelMeta(MetaObject):
+
+    def __call__(self, *args, **kwargs):
+        obj = super().__call__(*args, **kwargs)
+        obj.create()
+        WeightOperator.clean_weights()
+        return obj
+
+
+class Model(ModelObject, metaclass=ModelMeta):
+
+    def __init__(self, obj_name: str, is_training: Optional[bool] = None, trained_weights: Optional[dict] = None):
+        super(Model, self).__init__(obj_name=obj_name, is_training=is_training)
+        self._weight_operator = WeightOperator()
+        self._weight_operator.restore(weights=trained_weights or {})
+
+    def replace_weights(self, weights: dict) -> NoReturn:
+        self._weight_operator.restore(weights=weights)
+        self.create()
+        self._weight_operator.clean_weights()
 
     @property
-    def classify_layer(self) -> Layer:
-        return self._classify_layer
+    def training_weights(self) -> List[tf.Tensor]:
+        weights = self._weight_operator.collect_weights(partition_name=self.obj_name)
+        return weights
 
-    def in_creating(self) -> NoReturn:
-        self.assign(component=self.classify_layer, name="classify_layer")
+    def get_weights(self) -> dict:
+        return self._weight_operator.weights
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        return NotImplementedError()
-
-    @tf.function
-    def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
-        output = self.model(input_data=input_data)
-        return output
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        raise NotImplementedError()

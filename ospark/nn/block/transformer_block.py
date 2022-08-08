@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, NoReturn, Callable, List
+from typing import Optional, NoReturn, Callable, List, Type
 from ospark.nn.layers.self_attention import SelfAttentionLayer, EncoderDecoderAttentionLayer
 from ospark.nn.layers.deep_attention import DeepAttentionLayer, DeepEncoderDecoder
 from ospark.nn.layers.feed_forward import FeedForwardLayer
@@ -32,10 +32,10 @@ class TransformerEncoderBlock(Block):
                          embedding_size: int,
                          head_number: int,
                          scale_rate: int,
-                         attention_cls: SelfAttentionLayer,
-                         feedforward_cls: FeedForwardLayer,
+                         attention_cls: Type[SelfAttentionLayer],
+                         feedforward_cls: Type[FeedForwardLayer],
                          dropout_rate: float,
-                         is_training: Optional[bool]=False) -> TransformerEncoderBlock:
+                         is_training: Optional[bool]=None) -> TransformerEncoderBlock:
         return cls(obj_name=obj_name, 
                    attention=attention_cls(obj_name="attention",
                                            embedding_size=embedding_size,
@@ -52,15 +52,10 @@ class TransformerEncoderBlock(Block):
         self.assign(name="attention", component=self.attention)
         self.assign(name="feedforward", component=self.feedforward)
     
-    def model(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
-        layers = [self.assigned.attention(mask=mask), self.assigned.feedforward]
-        output = input_data
-        for layer in layers:
-            output = layer(input_data=output)
+    def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
+        output = self.assigned.attention.pipeline(input_data=input_data, mask=mask)
+        output = self.assigned.feedforward.pipeline(input_data=output)
         return output
-
-    def __call__(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
-        return self.model(input_data, mask)
 
 
 class TransformerDecoderBlock(Block):
@@ -93,16 +88,16 @@ class TransformerDecoderBlock(Block):
                          embedding_size: int,
                          head_number: int,
                          scale_rate: int,
-                         attention_cls: SelfAttentionLayer,
-                         encode_decode_attention_cls: EncoderDecoderAttentionLayer,
-                         feedforward_cls: FeedForwardLayer,
+                         attention_cls: Type[SelfAttentionLayer],
+                         encode_decode_attention_cls: Type[EncoderDecoderAttentionLayer],
+                         feedforward_cls: Type[FeedForwardLayer],
                          dropout_rate: float,
-                         is_training: Optional[bool]=False) -> TransformerEncoderBlock:
+                         is_training: Optional[bool]=None) -> TransformerDecoderBlock:
         return cls(obj_name=obj_name, 
                    attention=attention_cls(obj_name="attention",
                                            embedding_size=embedding_size,
                                            head_number=head_number,
-                                           look_ahead=True,
+                                           use_look_ahead=True,
                                            dropout_rate=dropout_rate,
                                            is_training=is_training),
                    encode_decode_attention=encode_decode_attention_cls(obj_name="encode_decode_attention",
@@ -121,25 +116,17 @@ class TransformerDecoderBlock(Block):
         self.assign(name="encode_decode_attention", component=self.encode_decode_attention)
         self.assign(name="feedforward", component=self.feedforward)
 
-    def model(self,
-              input_data: tf.Tensor,
-              encoder_output: tf.Tensor,
-              encoder_padding_mask: Optional[tf.Tensor],
-              decoder_padding_mask: Optional[tf.Tensor]) -> tf.Tensor:
-        layers = [self.assigned.attention(decoder_padding_mask),
-                  self.assigned.encode_decode_attention(encoder_padding_mask, encoder_output),
-                  self.assigned.feedforward]
-        output = input_data
-        for layer in layers:
-            output = layer(output)
-        return output
-
-    def __call__(self,
+    def pipeline(self,
                  input_data: tf.Tensor,
                  encoder_output: tf.Tensor,
-                 encoder_padding_mask: Optional[tf.Tensor],
-                 decoder_padding_mask: Optional[tf.Tensor]) -> tf.Tensor:
-        return self.model(input_data, encoder_output, encoder_padding_mask, decoder_padding_mask)
+                 encoder_padding_mask: tf.Tensor,
+                 decoder_padding_mask: tf.Tensor) -> tf.Tensor:
+        output = self.assigned.attention.pipeline(input_data=input_data, mask=decoder_padding_mask)
+        output = self.assigned.encode_decode_attention.pipeline(input_data=output,
+                                                                mask=encoder_padding_mask,
+                                                                encoder_output=encoder_output)
+        output = self.assigned.feedforward.pipeline(input_data=output)
+        return output
 
 
 def transformer_encoder_block(obj_name: str,
@@ -147,7 +134,7 @@ def transformer_encoder_block(obj_name: str,
                               head_number: int,
                               scale_rate: int,
                               dropout_rate: float,
-                              is_training: Optional[bool]=False) -> Block:
+                              is_training: Optional[bool]=None) -> Block:
     attention = SelfAttentionLayer(obj_name="attention",
                                    embedding_size=embedding_size,
                                    head_number=head_number,
@@ -168,7 +155,7 @@ def transformer_decoder_block(obj_name: str,
                               head_number: int,
                               scale_rate: int,
                               dropout_rate: float,
-                              is_training: Optional[bool]=False) -> Block:
+                              is_training: Optional[bool]=None) -> Block:
     attention = SelfAttentionLayer(obj_name="attention",
                                    embedding_size=embedding_size,
                                    head_number=head_number,
@@ -191,19 +178,60 @@ def transformer_decoder_block(obj_name: str,
                                     feedforward=feedforward)
     return block
 
-def create_coder_blocks(block_number: int,
-                        create_func: Callable[[str, int, int, int, float], Block],
-                        embedding_size: int,
-                        head_number: int,
-                        scale_rate: int,
-                        dropout_rate: Optional[float]=0.0) -> List[Block]:
-    blocks = []
-    for i in range(block_number):
-        name = f"block_{i}"
-        blocks.append(create_func(obj_name=name,
-                                  embedding_size=embedding_size,
-                                  head_number=head_number,
-                                  scale_rate=scale_rate,
-                                  dropout_rate=dropout_rate))
-    return blocks
+from ospark.nn.layers.self_attention import FavorAttentionLayer, EncodeDecodeFavorAttention
 
+
+def performer_encoder_block(obj_name: str,
+                            embedding_size: int,
+                            head_number: int,
+                            scale_rate: int,
+                            dropout_rate: float,
+                            random_projections_number: int,
+                            is_training: Optional[bool]=None) -> Block:
+    attention = FavorAttentionLayer(obj_name="favor_attention",
+                                    embedding_size=embedding_size,
+                                    head_number=head_number,
+                                    dropout_rate=dropout_rate,
+                                    is_training=is_training,
+                                    random_projections_number=random_projections_number)
+    feedforward = FeedForwardLayer(obj_name="feedforward",
+                                   embedding_size=embedding_size,
+                                   scale_rate=scale_rate,
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
+    block = TransformerEncoderBlock(obj_name=obj_name,
+                                    attention=attention,
+                                    feedforward=feedforward)
+    return block
+
+
+def performer_decoder_block(obj_name: str,
+                            embedding_size: int,
+                            head_number: int,
+                            scale_rate: int,
+                            dropout_rate: float,
+                            random_projections_number: int,
+                            is_training: Optional[bool]=None) -> Block:
+    attention = FavorAttentionLayer(obj_name="favor_attention",
+                                    embedding_size=embedding_size,
+                                    head_number=head_number,
+                                    dropout_rate=dropout_rate,
+                                    is_training=is_training,
+                                    use_look_ahead=True,
+                                    random_projections_number=random_projections_number)
+    encode_decode_attention = EncodeDecodeFavorAttention(obj_name="encode_decode_favor_attention",
+                                                         embedding_size=embedding_size,
+                                                         head_number=head_number,
+                                                         dropout_rate=dropout_rate,
+                                                         is_training=is_training,
+                                                         random_projections_number=random_projections_number)
+    feedforward = FeedForwardLayer(obj_name="feedforward",
+                                   embedding_size=embedding_size,
+                                   scale_rate=scale_rate,
+                                   dropout_rate=dropout_rate,
+                                   is_training=is_training)
+    block = TransformerDecoderBlock(obj_name=obj_name,
+                                    attention=attention,
+                                    encode_decode_attention=encode_decode_attention,
+                                    feedforward=feedforward)
+    return block

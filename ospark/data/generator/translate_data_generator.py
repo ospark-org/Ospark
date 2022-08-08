@@ -35,7 +35,6 @@ class TranslateDataGenerator(DataGenerator):
                  batch_size: int,
                  max_token: Optional[int]=None,
                  max_length: Optional[int]=None,
-                 max_ratio: Optional[float]=None,
                  start_index: Optional[int]=None,
                  padding_range: Optional[int]=None) -> NoReturn:
         super().__init__(training_data=training_data, target_data=target_data, batch_size=batch_size, initial_step=0)
@@ -50,15 +49,9 @@ class TranslateDataGenerator(DataGenerator):
         self._padding_range       = padding_range or 50
         self._max_length          = max_length
         self._next_interval       = None
-        if max_length is not None:
-            self._filter_rules.append(self.filter_length)
-        self._max_ratio = max_ratio
-        if max_ratio is not None:
-            self._filter_rules.append(self.filter_ratio)
         self._max_token           = max_token or 3000
         self._element_index       = start_index or 0
-        self._padded_shape        = ([-1], [-1]) if max_length is None else ([max_length], [max_length])
-        self._get_data            = self.batch_get_data if max_token is None else self.token_get_data
+        self._get_data            = self.from_batch_limit if max_token is None else self.from_token_limit
 
     @property
     def data_number(self) -> int:
@@ -101,16 +94,8 @@ class TranslateDataGenerator(DataGenerator):
         return self._max_token
 
     @property
-    def max_ratio(self) -> float:
-        return self._max_ratio
-
-    @property
     def element_index(self) -> int:
         return self._element_index
-
-    @property
-    def filter_rules(self) -> list:
-        return self._filter_rules
 
     def add_filter_rules(self, fn: Callable[[List[int], List[int]], bool]):
         self._filter_rules.append(fn)
@@ -118,19 +103,18 @@ class TranslateDataGenerator(DataGenerator):
     def encode_bos_eos(self,
                        train_sequence: str,
                        target_sequence: str) -> Tuple[np.ndarray, np.ndarray]:
+        if isinstance(train_sequence, tf.Tensor):
+            train_sequence  = train_sequence.numpy().decode("utf-8")
+            target_sequence = target_sequence.numpy().decode("utf-8")
+
         train_sequence = self.train_data_bos + self.train_data_encoder.encode(train_sequence) + self.train_data_eos
         target_sequence = self.target_data_bos + self.target_data_encoder.encode(target_sequence) + self.target_data_eos
         return np.array(train_sequence), np.array(target_sequence)
 
-    def filter_length(self, train_sequence: List[int], target_sequence: List[int]) -> bool:
-        return all([len(train_sequence) <= self.max_length,
-                    len(target_sequence) <= self.max_length])
+    def filter_length(self, train_sequence: np.ndarray, target_sequence: np.ndarray) -> bool:
+        return len(train_sequence) > self.max_length or len(target_sequence) > self.max_length
 
-    def filter_ratio(self, train_sequence: List[int], target_sequence: List[int]) -> bool:
-        return all([len(train_sequence) / len(target_sequence) <= self.max_ratio,
-                    len(target_sequence) / len(train_sequence) <= self.max_ratio])
-
-    def batch_get_data(self):
+    def from_batch_limit(self):
         train_data = []
         target_data = []
         train_data_len = []
@@ -138,9 +122,9 @@ class TranslateDataGenerator(DataGenerator):
         while self.element_index < self.data_number:
             train_sequence, target_sequence = self.encode_bos_eos(train_sequence=self.training_data[self.element_index],
                                                                   target_sequence=self.target_data[self.element_index])
-            if self.filter_rules != []:
-                result = [filter_method(train_sequence, target_sequence) for filter_method in self.filter_rules]
-                if not all(result):
+            if self.max_length is not None:
+                is_filtered = self.filter_length(train_sequence, target_sequence)
+                if is_filtered:
                     self._element_index += 1
                     continue
 
@@ -162,7 +146,7 @@ class TranslateDataGenerator(DataGenerator):
         return tf.convert_to_tensor(train_data, dtype=tf.int64), \
                tf.convert_to_tensor(target_data, dtype=tf.int64)
 
-    def token_get_data(self):
+    def from_token_limit(self):
         train_data          = []
         target_data         = []
         train_data_len      = []
@@ -171,8 +155,8 @@ class TranslateDataGenerator(DataGenerator):
         while self.element_index < self.data_number:
             train_sequence, target_sequence = self.encode_bos_eos(train_sequence=self.training_data[self.element_index],
                                                                   target_sequence=self.target_data[self.element_index])
-            if self.filter_rules != []:
-                result = [filter_method(train_sequence, target_sequence) for filter_method in self.filter_rules]
+            if self.max_length is not None:
+                result = self.
                 if not all(result):
                     self._element_index += 1
                     continue
@@ -239,7 +223,6 @@ class TranslateDataGenerator(DataGenerator):
                             batch_size: int,
                             max_token: Optional[int]=None,
                             max_length: Optional[int]=None,
-                            max_ratio: Optional[float]=None,
                             start_index: Optional[int]=None,
                             padding_range: Optional[int]=None) -> tf.data.Dataset:
         generator = cls(training_data=train_data,
@@ -249,7 +232,6 @@ class TranslateDataGenerator(DataGenerator):
                         batch_size=batch_size,
                         max_token=max_token,
                         max_length=max_length,
-                        max_ratio=max_ratio,
                         start_index=start_index,
                         padding_range=padding_range)
         generator = tf.data.Dataset.from_generator(generator,

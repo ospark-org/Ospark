@@ -28,8 +28,5 @@ class Backbone(ModelObject):
     def in_creating(self) -> NoReturn:
         raise NotImplementedError("Is required")
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         raise NotImplementedError("Is required")
-
-    def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
-        return self.model(input_data=input_data)

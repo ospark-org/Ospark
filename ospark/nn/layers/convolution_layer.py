@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ospark.nn.layers import Layer
-from ospark.nn.component.activation import Activation, relu, PassActivation
-from ospark.nn.component.normalization import Normalization, BatchNormalization, PassNormalization
+from ospark.nn.component.activation import Activation, ReLU, PassActivation
+from ospark.nn.layers.normalization import Normalization, BatchNormalization, PassNormalization
 from typing import List, NoReturn, Optional
 import tensorflow as tf
 import ospark
@@ -14,10 +14,11 @@ class ConvolutionLayer(Layer):
                  filter_size: List[int],
                  strides: List[int],
                  padding: str,
+                 is_training: Optional[bool]=None,
                  activation: Optional[Activation]=None,
                  normalization: Optional[Normalization]=None,
                  layer_order: Optional[List[str]]=None) -> NoReturn:
-        super().__init__(obj_name=obj_name)
+        super().__init__(obj_name=obj_name, is_training=is_training)
         self._filter_size   = filter_size
         self._strides       = strides
         self._padding       = padding
@@ -65,8 +66,10 @@ class ConvolutionLayer(Layer):
                      strides: List[int],
                      padding: str,
                      trainable: bool) -> ConvolutionLayer:
-        activation    = relu()
-        normalization = BatchNormalization(input_depth=filter_size[-2], trainable=trainable)
+        activation    = ReLU()
+        normalization = BatchNormalization(obj_name="batch_norm",
+                                           input_depth=filter_size[-2],
+                                           is_training=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,
@@ -82,8 +85,10 @@ class ConvolutionLayer(Layer):
                      strides: List[int],
                      padding: str,
                      trainable: bool) -> ConvolutionLayer:
-        activation = relu()
-        normalization = BatchNormalization(input_depth=filter_size[-1], trainable=trainable)
+        activation = ReLU()
+        normalization = BatchNormalization(obj_name="batch_norm",
+                                           input_depth=filter_size[-1],
+                                           is_training=trainable)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,
@@ -92,22 +97,24 @@ class ConvolutionLayer(Layer):
                    normalization=normalization,
                    layer_order=["conv", "norm", "activate"])
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
         for layer_name in self.layer_order:
             output = self.__getattribute__(layer_name)(output)
         return output
 
     def in_creating(self) -> NoReturn:
-        self.assign(component=ospark.weight.glorot_uniform(obj_name="filter", weight_shape=self.filter_size), name="filter")
-        self.assign(component=self.normalization, name="norm")
+        self._filter = ospark.weight.glorot_uniform(obj_name="filter", shape=self.filter_size)
+        self._norm   = self.normalization
+        # self.assign(component=ospark.weight.glorot_uniform(obj_name="filter", weight_shape=self.filter_size), name="filter")
+        # self.assign(component=self.normalization, name="norm")
 
     def conv(self, input_data: tf.Tensor) -> tf.Tensor:
-        output = tf.nn.conv2d(input=input_data, filters=self.assigned.filter, strides=self.strides, padding=self.padding)
+        output = tf.nn.conv2d(input=input_data, filters=self._filter, strides=self.strides, padding=self.padding)
         return output
 
     def norm(self, input_data: tf.Tensor) -> tf.Tensor:
-        output = self.assigned.norm(input_data)
+        output = self._norm(input_data)
         return output
 
     def activate(self, input_data: tf.Tensor) -> tf.Tensor:

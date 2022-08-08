@@ -31,8 +31,11 @@ class PoolingLayer(Layer):
     def strides(self) -> List[int]:
         return self._strides
 
-    def model(self, input_data: tf.Tensor):
+    def pipeline(self, input_data: tf.Tensor):
         raise NotImplementedError()
+
+    def __call__(self, *args, **kwargs):
+        return self.pipeline(*args, **kwargs)
 
 
 class Max2DPooling(PoolingLayer):
@@ -46,7 +49,7 @@ class Max2DPooling(PoolingLayer):
                          strides=strides,
                          padding=padding)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         pooling_result = tf.nn.max_pool2d(input=input_data,
                                           ksize=self.pooling_size,
                                           strides=self.strides,
@@ -65,7 +68,7 @@ class Average2DPooling(PoolingLayer):
                          strides=strides,
                          padding=padding)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         pooling_result = tf.nn.avg_pool2d(input=input_data,
                                           ksize=self.pooling_size,
                                           strides=self.strides,

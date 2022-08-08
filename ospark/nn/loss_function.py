@@ -1,5 +1,3 @@
-import math
-
 import tensorflow as tf
 from typing import NoReturn, Optional, Tuple
 
@@ -19,7 +17,7 @@ class LossFunction:
 class SparseCategoricalCrossEntropy(LossFunction):
 
     def __init__(self):
-        self._loss_function = tf.keras.losses.SparseCategoricalCrossEntropy(from_logits=True, reduction='none')
+        self._loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
 
     @property
     def loss_function(self) -> tf.keras.losses.Loss:

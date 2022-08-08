@@ -1,7 +1,7 @@
 from ospark.nn.layers.self_attention import SelfAttentionLayer
 import tensorflow as tf
 import numpy as np
-from ospark.nn.component.normalization import Normalization
+from ospark.nn.layers.normalization import Normalization
 from typing import NoReturn, Tuple, Optional
 
 
@@ -13,13 +13,11 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
                  head_number: int,
                  sample_factor: float,
                  dropout_rate: float,
-                 is_training: Optional[bool]=False,
-                 use_look_ahead: Optional[bool]=False,
-                 normalization: Normalization=None) -> NoReturn:
+                 is_training: Optional[bool]=None,
+                 use_look_ahead: Optional[bool]=False) -> NoReturn:
         super().__init__(obj_name=obj_name,
                          embedding_size=embedding_size,
                          head_number=head_number,
-                         normalization=normalization,
                          dropout_rate=dropout_rate,
                          is_training=is_training,
                          use_look_ahead=use_look_ahead)

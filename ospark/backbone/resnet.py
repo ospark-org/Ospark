@@ -30,11 +30,11 @@ class ResnetBackbone(Backbone):
         for cell in self.cells:
             self.assign(component=cell)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        output = self.assigned.first_conv(input_data)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        output = self.assigned.first_conv.pipeline(input_data)
         output = tf.nn.max_pool2d(output, strides=2, ksize=3, padding="SAME")
         for cell in self.cells:
-            output = cell(output)
+            output = cell.pipeline(output)
             if self.use_catch:
                 self._catch_box.append(output)
         output = self.catch_box if self.use_catch else output

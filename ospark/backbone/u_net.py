@@ -32,11 +32,13 @@ class Unet(Backbone):
         self.assign(component=self.downsampling, name="downsampling")
         self.assign(component=self.upsampling, name="upsampling")
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        encoder_output = self.downsampling(input_data)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        encoder_output = self.downsampling.pipeline(input_data)
         if type(encoder_output) is not list:
             raise TypeError("Type is not list, please check use_catch of backbone attribute")
-        decoder_output = self.upsampling(encoder_output)
+        input_data       = encoder_output.pop()
+        connection_input = encoder_output
+        decoder_output = self.upsampling.pipeline(input_data=input_data, connection_input=connection_input)
         return decoder_output
 
     @classmethod
@@ -61,6 +63,7 @@ class Unet(Backbone):
         encoder         = resnet50(trainable=trainable, catch_output=True)
         input_channels  = input_channels or [2048 + 1024, 128 + 512, 64 + 256]
         output_channels = output_channels or [128, 64, 32]
+
         decoder = shared_convolution_decoder(input_channels=input_channels,
                                              output_channels=output_channels,
                                              trainable=trainable)

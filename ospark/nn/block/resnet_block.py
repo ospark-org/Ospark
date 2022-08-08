@@ -13,7 +13,7 @@ class ResnetBlock(Block):
                  scale_rate: Optional[int]=4,
                  kernel_size: Optional[int]=3,
                  strides: Optional[int]=1,
-                 shortcut_conv: Optional[bool]=False,
+                 use_shortcut_conv: Optional[bool]=False,
                  trainable: Optional[bool]=True) -> NoReturn:
         super().__init__(obj_name=obj_name)
         self._input_channel  = input_channel
@@ -21,8 +21,9 @@ class ResnetBlock(Block):
         self._scale_rate     = scale_rate
         self._kernel_size    = kernel_size
         self._strides        = strides
-        self._shortcut_conv  = shortcut_conv
         self._trainable      = trainable
+
+        self._use_shortcut_conv  = use_shortcut_conv
 
     @property
     def input_channel(self) -> int:
@@ -45,28 +46,27 @@ class ResnetBlock(Block):
         return self._strides
 
     @property
-    def shortcut_conv(self) -> bool:
-        return self._shortcut_conv
+    def use_shortcut_conv(self) -> bool:
+        return self._use_shortcut_conv
 
     @property
     def trainable(self) -> bool:
         return self._trainable
 
     def in_creating(self) -> NoReturn:
-        if self.shortcut_conv:
-            self.assign(component=ConvolutionLayer.bn_relu_conv(obj_name="shortcut_conv",
-                                                                filter_size=[1,
-                                                                             1,
-                                                                             self.input_channel,
-                                                                             self.scale_rate * self.main_channel],
-                                                                strides=[1, self.strides, self.strides, 1],
-                                                                padding="SAME",
-                                                                trainable=self.trainable),
-                        name="shortcut_conv")
+        if self.use_shortcut_conv:
+            self.shortcut_conv = ConvolutionLayer.bn_relu_conv(obj_name="shortcut_conv",
+                                                               filter_size=[1,
+                                                                            1,
+                                                                            self.input_channel,
+                                                                            self.scale_rate * self.main_channel],
+                                                               strides=[1, self.strides, self.strides, 1],
+                                                               padding="SAME",
+                                                               trainable=self.trainable)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        if self.shortcut_conv:
-            shortcut = self.assigned.shortcut_conv(input_data)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        if self.use_shortcut_conv:
+            shortcut = self.shortcut_conv.pipeline(input_data)
         else:
             shortcut = input_data
         return shortcut
@@ -76,86 +76,86 @@ class Block1(ResnetBlock):
 
     def in_creating(self) -> NoReturn:
         super().in_creating()
-        if self.shortcut_conv:
-            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
-                                                                filter_size=[1,
-                                                                             1,
-                                                                             self.input_channel,
-                                                                             self.main_channel],
-                                                                strides=[1, self.strides, self.strides, 1],
-                                                                padding="SAME",
-                                                                trainable=self.trainable))
+        if self.use_shortcut_conv:
+            self.layer_1X1_0 = ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
+                                                             filter_size=[1,
+                                                                          1,
+                                                                          self.input_channel,
+                                                                          self.main_channel],
+                                                             strides=[1, self.strides, self.strides, 1],
+                                                             padding="SAME",
+                                                             trainable=self.trainable)
         else:
-            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
-                                                                filter_size=[1,
-                                                                             1,
-                                                                             self.scale_rate * self.main_channel,
-                                                                             self.main_channel],
-                                                                strides=[1, self.strides, self.strides, 1],
-                                                                padding="SAME",
-                                                                trainable=self.trainable))
+            self.layer_1X1_0 = ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
+                                                             filter_size=[1,
+                                                                          1,
+                                                                          self.scale_rate * self.main_channel,
+                                                                          self.main_channel],
+                                                             strides=[1, self.strides, self.strides, 1],
+                                                             padding="SAME",
+                                                             trainable=self.trainable)
 
-        self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3",
-                                                            filter_size=[self.kernel_size,
-                                                                         self.kernel_size,
-                                                                         self.main_channel,
-                                                                         self.main_channel],
-                                                            strides=[1, 1, 1, 1],
-                                                            padding="SAME",
-                                                            trainable=self.trainable))
-        self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_1",
-                                                            filter_size=[1,
-                                                                         1,
-                                                                         self.main_channel,
-                                                                         self.scale_rate * self.main_channel],
-                                                            strides=[1, 1, 1, 1],
-                                                            padding="SAME",
-                                                            trainable=self.trainable))
+        self.layer_3X3 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3",
+                                                       filter_size=[self.kernel_size,
+                                                                    self.kernel_size,
+                                                                    self.main_channel,
+                                                                    self.main_channel],
+                                                       strides=[1, 1, 1, 1],
+                                                       padding="SAME",
+                                                       trainable=self.trainable)
+        self.layer_1X1_1 = ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_1",
+                                                         filter_size=[1,
+                                                                      1,
+                                                                      self.main_channel,
+                                                                      self.scale_rate * self.main_channel],
+                                                         strides=[1, 1, 1, 1],
+                                                         padding="SAME",
+                                                         trainable=self.trainable)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
-        shortcut = super().model(input_data)
-        layers = [self.assigned.layer_1X1_0, self.assigned.layer_3X3, self.assigned.layer_1X1_1]
+        shortcut = super().pipeline(input_data)
+        layers = [self.layer_1X1_0, self.layer_3X3, self.layer_1X1_1]
         for layer in layers:
-            output = layer(output)
+            output = layer.pipeline(output)
         return output + shortcut
 
 class Block2(ResnetBlock):
 
     def in_creating(self) -> NoReturn:
         super().in_creating()
-        if self.shortcut_conv:
-            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
-                                                                filter_size=[3,
-                                                                             3,
-                                                                             self.input_channel,
-                                                                             self.main_channel],
-                                                                strides=[1, self.strides, self.strides, 1],
-                                                                padding="SAME",
-                                                                trainable=self.trainable))
+        if self.use_shortcut_conv:
+            self.layer_3X3_0 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
+                                                             filter_size=[3,
+                                                                          3,
+                                                                          self.input_channel,
+                                                                          self.main_channel],
+                                                             strides=[1, self.strides, self.strides, 1],
+                                                             padding="SAME",
+                                                             trainable=self.trainable)
         else:
-            self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
-                                                                filter_size=[3,
-                                                                             3,
-                                                                             self.scale_rate * self.main_channel,
-                                                                             self.main_channel],
-                                                                strides=[1, self.strides, self.strides, 1],
-                                                                padding="SAME",
-                                                                trainable=self.trainable))
-        self.assign(component=ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_1",
-                                                            filter_size=[3,
-                                                                         3,
-                                                                         self.main_channel,
-                                                                         self.scale_rate * self.main_channel],
-                                                            strides=[1, 1, 1, 1],
-                                                            padding="SAME",
-                                                            trainable=self.trainable))
+            self.layer_3X3_0 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
+                                                             filter_size=[3,
+                                                                          3,
+                                                                          self.scale_rate * self.main_channel,
+                                                                          self.main_channel],
+                                                             strides=[1, self.strides, self.strides, 1],
+                                                             padding="SAME",
+                                                             trainable=self.trainable)
+        self.layer_3X3_1 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_1",
+                                                         filter_size=[3,
+                                                                      3,
+                                                                      self.main_channel,
+                                                                      self.scale_rate * self.main_channel],
+                                                         strides=[1, 1, 1, 1],
+                                                         padding="SAME",
+                                                         trainable=self.trainable)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
-        shortcut = super().model(input_data)
-        layers = [self.assigned.layer_3X3_0, self.assigned.layer_3X3_1]
+        shortcut = super().pipeline(input_data)
+        layers = [self.layer_3X3_0, self.layer_3X3_1]
         for layer in layers:
-            output = layer(output)
+            output = layer.pipeline(output)
         return output + shortcut
 

@@ -26,7 +26,7 @@ class Autoencoder(Backbone):
         self.assign(component=self.encoder, name="encoder")
         self.assign(component=self.decoder, name="decoder")
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
-        encoder_output = self.assigned.encoder(input_data)
-        decoder_output = self.assigned.decoder(encoder_output)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        encoder_output = self.assigned.encoder.pipeline(input_data)
+        decoder_output = self.assigned.decoder.pipeline(encoder_output)
         return decoder_output

@@ -1,6 +1,6 @@
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
 from ospark.data.generator.translate_data_generator import TranslateDataGenerator
-from ospark.former.builder import build_exdeep_transformer
+from ospark.models.builder import build_exdeep_transformer
 from ospark.predictor.translator import Translator
 from typing import Optional
 from sacrebleu.metrics import BLEU

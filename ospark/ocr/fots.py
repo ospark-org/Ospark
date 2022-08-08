@@ -2,9 +2,9 @@ from ospark.trainer import *
 from ospark.nn.model import Model
 from ospark.utility.roi_rotate import RoIRotate
 from typing import List, Tuple, Optional, Union, Any
-from ospark.detection_model.pixel_wise import fots_detection_model, PixelWiseDetection
+from ospark.models.pixel_wise import fots_detection_model, PixelWiseDetection
 from ospark.nn.loss_function import Dice, Degree, IoU, LossFunction
-from ospark.recognition_model.text_recognition import TextRecognition, fots_recognition_model
+from ospark.models.text_recognition import TextRecognition, fots_recognition_model
 import tensorflow as tf
 import numpy as np
 import time
@@ -107,21 +107,27 @@ class FOTSTrainer(Trainer):
     @classmethod
     def create_attention_fots(cls,
                               data_generator: DataGenerator,
+                              retrained_weights: dict,
                               corpus: dict,
                               batch_size: int,
                               epoch_number: int,
                               optimizer: Optimizer,
                               reg_optimizer: Optimizer,
+                              detection_model: Optional[Model]=None,
+                              recognition_model: Optional[Model]=None,
                               save_path: Optional[str]=None,
                               save_times: Optional[int]=None,
                               trainable: Optional[bool]=True):
-        detection_model   = fots_detection_model(trainable=trainable)
-        recognition_model = fots_recognition_model(class_number=len(corpus),
-                                                   scale_rate=4,
-                                                   head_number=8,
-                                                   input_channel=32,
-                                                   sequential_output_channels=[[64, 64], [128, 128], [256, 256]],
-                                                   trainable=trainable)
+        detection_model   = detection_model or fots_detection_model(trainable=trainable, retrained_weights=retrained_weights)
+        recognition_model = recognition_model or fots_recognition_model(class_number=len(corpus),
+                                                                        retrained_weights=retrained_weights,
+                                                                        scale_rate=4,
+                                                                        head_number=8,
+                                                                        input_channel=32,
+                                                                        sequential_output_channels=[[64, 64],
+                                                                                                    [128, 128],
+                                                                                                    [256, 256]],
+                                                                        trainable=trainable)
         return cls(data_generator=data_generator,
                    detection_model=detection_model,
                    recognition_model=recognition_model,
@@ -137,8 +143,8 @@ class FOTSTrainer(Trainer):
                    save_times=save_times)
 
     def start(self) -> NoReturn:
-        self._detection_variables   = self.weights_operator.collect("detection_model")
-        self._recognition_variables = self.weights_operator.collect("recognition_model")
+        self._detection_variables   = self.weights_operator.collect_weights("detection_model")
+        self._recognition_variables = self.weights_operator.collect_weights("recognition_model")
         for i in range(self.epoch_number):
             start = time.time()
             detection_loss_value   = 0
@@ -169,8 +175,8 @@ class FOTSTrainer(Trainer):
             print("spent time per epoch: ", time.time() - start)
 
             if self.will_save(epoch_number=i):
-                self.save_delegate.save(weights=self.weights_operator.get)
-        self.save_delegate.save(weights=self.weights_operator.get)
+                self.save_delegate.save(weights=self.weights_operator.weights)
+        self.save_delegate.save(weights=self.weights_operator.weights)
 
     @tf.function(input_signature=[
         tf.TensorSpec(shape=[None, None, None, None], dtype=tf.float32),
@@ -180,7 +186,7 @@ class FOTSTrainer(Trainer):
                        input_data: tf.Tensor,
                        target_maps: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         with tf.GradientTape() as detection_tape:
-            det_predict, feature_maps = self.model(input_data)
+            det_predict, feature_maps = self.model.pipeline(input_data)
             loss_value  = self.calculate_detection_loss(prediction=det_predict, target_data=target_maps)
             added_loss  = loss_value[0] + loss_value[1] + loss_value[2]
             gradients   = self.calculate_gradient(tape=detection_tape, loss_value=added_loss, training_variable=self.detection_variables)
@@ -245,9 +251,9 @@ class FOTSTrainer(Trainer):
                                label_length: tf.int32,
                                images_width: tf.int32):
         with tf.GradientTape() as recognition_tape:
-            training_variable = self.weights_operator.collect("recognition_model")
+            training_variable = self.weights_operator.collect_weights("recognition_model")
             recognition_tape.watch(training_variable)
-            reg_prediction = self.recognition_model(input_data=training_data)
+            reg_prediction = self.recognition_model.pipeline(input_data=training_data)
             loss_value  = tf.nn.ctc_loss(labels=sparse_target,
                                          logits=reg_prediction,
                                          label_length=label_length,
@@ -269,6 +275,7 @@ class FOTSTrainer(Trainer):
                            training_variable: List[tf.Tensor]):
         tape.watch(training_variable)
         gradient = tape.gradient(loss_value, training_variable)
+
         gradient = [tf.clip_by_value(grad, -1., 1.) for grad in gradient]
         return gradient
 

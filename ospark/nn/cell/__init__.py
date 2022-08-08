@@ -1,19 +1,19 @@
 from __future__ import annotations
 from ospark.nn.block import Block
 from ospark.nn.component.basic_module import ModelObject
-from typing import List, NoReturn
+from typing import List, NoReturn, Optional
 from abc import abstractmethod
 import tensorflow as tf
 
 class Cell(ModelObject):
 
-    def __init__(self, obj_name: str) -> NoReturn:
-        super().__init__(obj_name=obj_name)
+    def __init__(self, obj_name: str, is_training: Optional[bool]=None) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training)
 
-    def model(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
         for block in self.assigned:
-            output = block(input_data=output)
+            output = block.pipeline(input_data=output)
         return output
 
     @abstractmethod
@@ -28,6 +28,3 @@ class Cell(ModelObject):
                 cell.assign(block(**config))
             return cell
         return set_configs
-
-    def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
-        return self.model(input_data)

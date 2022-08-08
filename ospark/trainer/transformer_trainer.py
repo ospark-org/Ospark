@@ -1,5 +1,5 @@
 from ospark.trainer import *
-from ospark.former.transformer import Transformer
+from ospark.models.transformer import Transformer
 from ospark.nn.loss_function import LossFunction
 import tensorflow as tf
 import time
@@ -60,9 +60,8 @@ class TransformerTrainer(Trainer):
         return self.train_step(train_data=train_data, target_data=target_data)
 
     def start(self) -> NoReturn:
-        self.model.create()
         if self.save_init_weights:
-            weights = self.weights_operator.get
+            weights = self.weights_operator.weights
             self.save(weights=weights, path=self.init_weights_path)
         print("Training start.")
         self.training_process(epoch_number=self.epoch_number)
@@ -81,6 +80,7 @@ class TransformerTrainer(Trainer):
                 total_accuracies += accuracies
                 total_loss_value += loss_value
                 training_count   += 1
+                print(loss_value)
                 if (batch + 1) % 50 == 0:
                     print(f"Epoch {epoch + 1} Batch {batch} Loss {loss_value:.4f} Accuracy {accuracies:.4f}")
 
@@ -92,8 +92,8 @@ class TransformerTrainer(Trainer):
                   f'Accuracy {total_accuracies / training_count:.4f}')
             print(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
             if self.will_save(epoch_number=epoch):
-                self.save_delegate.save(weights=self.weights_operator.get)
-        self.save(weights=self.weights_operator.get)
+                self.save_delegate.save(weights=self.weights_operator.weights)
+        self.save(weights=self.weights_operator.weights)
         self.log_file.close()
 
     def calculate_accuracy(self, prediction: tf.Tensor, target: tf.Tensor) -> tf.Tensor:
@@ -106,10 +106,10 @@ class TransformerTrainer(Trainer):
 
     def train_step(self, train_data: tf.Tensor, target_data: tf.Tensor):
         with tf.GradientTape() as tape:
-            prediction = self.model(encoder_input=train_data, decoder_input=target_data[:, :-1])
+            prediction = self.model.pipeline(encoder_input=train_data, decoder_input=target_data[:, :-1])
             loss_value = self.loss_function(prediction=prediction, target_data=target_data[:, 1:])
             accuracies = self.calculate_accuracy(prediction=prediction, target=target_data[:, 1:])
-            weights    = self.weights_operator.collect()
+            weights    = self.weights_operator.collect_weights()
             tape.watch(weights)
         gradients  = tape.gradient(loss_value, weights)
         self.optimizer.apply_gradients(zip(gradients, weights))

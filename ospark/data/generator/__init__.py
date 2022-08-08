@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 import tensorflow as tf
 import math
 
@@ -25,7 +25,11 @@ class DataGenerator:
             self._target_data   = target_data
 
 
-    def __init__(self, training_data: tf.Tensor, target_data: tf.Tensor, batch_size: int, initial_step: Optional[int]=None):
+    def __init__(self,
+                 training_data: Union[tf.Tensor, list],
+                 target_data: Union[tf.Tensor, list],
+                 batch_size: int,
+                 initial_step: Optional[int]=None):
         self._training_data  = training_data
         self._target_data    = target_data
         self._batch_size     = batch_size

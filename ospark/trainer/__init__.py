@@ -38,7 +38,6 @@ class Trainer:
 
             with self.mirrored_strategy.scope():
                 self._model     = model
-                self.model.create()
                 self._optimizer = optimizer
 
             self._data_generator  = self.mirrored_strategy.experimental_distribute_dataset(data_generator)
@@ -46,7 +45,6 @@ class Trainer:
 
         else:
             self._model            = model
-            self.model.create()
             self._optimizer        = optimizer
             self._data_generator   = data_generator
             self._training_method  = self.graph_mode if use_auto_graph else self.eager_mode
@@ -117,18 +115,20 @@ class Trainer:
                   f'Loss {total_loss_value / training_count:.4f} ')
             print(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
             if self.will_save(epoch_number=epoch) and self.save_path is not None:
-                self.save_delegate.save(weights=self.weights_operator.get, path=self.save_path)
+                self.save_delegate.save(weights=self.weights_operator.weights, path=self.save_path)
 
         if self.save_path is not None:
-            self.save_delegate.save(weights=self.weights_operator.get, path=self.save_path)
+            self.save_delegate.save(weights=self.weights_operator.weights, path=self.save_path)
 
     def train_step(self, train_data: tf.Tensor, target_data: tf.Tensor):
         with tf.GradientTape() as tape:
-            prediction = self.model(input_data=train_data)
+            prediction = self.model.pipeline(input_data=train_data)
             loss_value = self.loss_function(prediction=prediction, target_data=target_data)
-            weights    = self.weights_operator.collect()
+            weights    = self.weights_operator.collect_weights()
+            print("Watch weights.")
             tape.watch(weights)
-        gradients  = tape.gradient(loss_value, weights)
+            print(weights)
+        gradients = tape.gradient(loss_value, weights)
         self.optimizer.apply_gradients(zip(gradients, weights))
         return loss_value
 
@@ -144,10 +144,7 @@ class Trainer:
         return self.train_step(train_data=train_data, target_data=target_data)
 
     def get_weights(self) -> dict:
-        return self.weights_operator.get
-
-    def restore_weights(self, weights: dict={}) -> NoReturn:
-        WeightOperator.restore(weights=weights)
+        return self.weights_operator.weights
 
     def will_save(self, epoch_number: int) -> bool:
         if self.save_times is None:

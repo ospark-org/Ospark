@@ -22,7 +22,7 @@ class ConnectionBlock(Block):
         for layer in self.connection_layers:
             self.assign(component=layer)
 
-    def model(self, input_data: tf.Tensor, connection_input: List[tf.Tensor]) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor, connection_input: List[tf.Tensor]) -> tf.Tensor:
         """
 
         : input_data is 4-D Tensor [b, h, w, c]:
@@ -31,15 +31,9 @@ class ConnectionBlock(Block):
         """
 
         return reduce(
-            lambda output, layer: layer(output, connection_input.pop()),
+            lambda output, layer: layer.pipeline(output, connection_input.pop()),
             self.connection_layers,
             input_data)
-
-    def __call__(self, input_data: List[tf.Tensor]) -> tf.Tensor:
-        encoder_output = input_data.pop()
-        connection_input = input_data
-        output = self.model(input_data=encoder_output, connection_input=connection_input)
-        return output
 
 
 def shared_convolution_decoder(input_channels: List[int], output_channels: List[int], trainable: bool) -> ConnectionBlock:
@@ -50,7 +44,7 @@ def shared_convolution_decoder(input_channels: List[int], output_channels: List[
         connection_layer = ConnectionLayer(obj_name=name,
                                            concatenated_channel=input_channel,
                                            output_channel=output_channel,
-                                           trainable=trainable)
+                                           is_training=trainable)
         connection_layers.append(connection_layer)
     decoder = ConnectionBlock(obj_name="shared_decoder", connection_layers=connection_layers)
     return decoder

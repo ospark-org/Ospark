@@ -1,5 +1,5 @@
 from ospark.predictor import *
-from ospark.former.former import Former
+from ospark.models.former import Former
 from typing import List
 import tensorflow_datasets as tfds
 import tensorflow as tf
