@@ -10,11 +10,11 @@ class ResnetBackbone(Backbone):
     def __init__(self,
                  obj_name: str,
                  cells: List[ResnetCell],
-                 use_catch: bool,
-                 trainable: Optional[bool]=None):
+                 is_keep_blocks: bool,
+                 is_training: Optional[bool]=None):
         super().__init__(obj_name=obj_name,
-                         use_catch=use_catch,
-                         trainable=trainable)
+                         is_keep_blocks=is_keep_blocks,
+                         is_training=is_training)
         self._cells = cells
 
     @property
@@ -26,7 +26,7 @@ class ResnetBackbone(Backbone):
                                                             filter_size=[7, 7, 3, 64],
                                                             strides=[1, 2, 2, 1],
                                                             padding="SAME",
-                                                            trainable=self.trainable))
+                                                            trainable=self.is_training))
         for cell in self.cells:
             self.assign(component=cell)
 
@@ -35,7 +35,7 @@ class ResnetBackbone(Backbone):
         output = tf.nn.max_pool2d(output, strides=2, ksize=3, padding="SAME")
         for cell in self.cells:
             output = cell.pipeline(output)
-            if self.use_catch:
-                self._catch_box.append(output)
-        output = self.catch_box if self.use_catch else output
+            if self.is_keep_blocks:
+                self._block_register.append(output)
+        output = self.block_register if self.is_keep_blocks else output
         return output

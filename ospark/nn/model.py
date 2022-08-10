@@ -15,7 +15,7 @@ class ModelMeta(MetaObject):
 
 class Model(ModelObject, metaclass=ModelMeta):
 
-    def __init__(self, obj_name: str, is_training: Optional[bool] = None, trained_weights: Optional[dict] = None):
+    def __init__(self, obj_name: str, is_training: Optional[bool]=None, trained_weights: Optional[dict]=None):
         super(Model, self).__init__(obj_name=obj_name, is_training=is_training)
         self._weight_operator = WeightOperator()
         self._weight_operator.restore(weights=trained_weights or {})

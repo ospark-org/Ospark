@@ -40,7 +40,6 @@ class Former(Model):
                                                          shape=[class_number])
         self._classifier           = tf.nn.sigmoid if class_number == 2 else tf.nn.softmax
         self._use_classifier       = use_classifier
-        self._is_training          = is_training
 
         self._positional_encoding_table = self.create_positional_encoding_table()
 
@@ -68,12 +67,12 @@ class Former(Model):
                                                                corpus_size=decoder_corpus_size)
                 self.assign(self.decoder_embedding_layer)
 
-            self._create_mask_matrix = self.create_onehot_mask
+            self._create_mask_matrix = self.create_mask_by_onehot
 
         else:
             self._decoder_embedding_layer = lambda input_data: input_data
             self._encoder_embedding_layer = lambda input_data: input_data
-            self._create_mask_matrix      = self.create_embedding_mask
+            self._create_mask_matrix      = self.create_mask_by_embedding
 
     @property
     def embedding_size(self) -> int:
@@ -139,13 +138,9 @@ class Former(Model):
     def decoder_dropout_layer(self) -> tf.keras.layers.Dropout:
         return self._decoder_dropout_layer
 
-    @property
-    def is_training(self) -> bool:
-        return self._is_training
-
-    def create_onehot_mask(self,
-                           encoder_input: tf.Tensor,
-                           decoder_input: Optional[tf.Tensor]=None) -> Tuple[tf.Tensor, tf.Tensor]:
+    def create_mask_by_onehot(self,
+                              encoder_input: tf.Tensor,
+                              decoder_input: Optional[tf.Tensor]=None) -> Tuple[tf.Tensor, tf.Tensor]:
         encoder_padding_mask = tf.cast(tf.math.equal(encoder_input, 0), tf.float32)[:, tf.newaxis, tf.newaxis, :]
         if decoder_input is not None:
             sequence_length        = tf.shape(decoder_input)[1]
@@ -156,17 +151,13 @@ class Former(Model):
             lookahead_padding_mask = None
         return encoder_padding_mask, lookahead_padding_mask
 
-    def create_embedding_mask(self,
-                              encoder_input: tf.Tensor,
-                              decoder_input: Optional[tf.Tensor]=None) -> Tuple[tf.Tensor, tf.Tensor]:
-        encoder_padding_mask = tf.cast(tf.math.equal(encoder_input[:, :, 0], 0), tf.float32)[:, tf.newaxis, tf.newaxis, :]
-        if decoder_input is not None:
-            sequence_length        = tf.shape(decoder_input)[1]
-            decoder_padding_mask   = tf.cast(tf.math.equal(decoder_input[:, :, 0], 0), tf.float32)[:, tf.newaxis, tf.newaxis, :]
-            lookahead_padding_mask = 1 - tf.linalg.band_part(tf.ones((sequence_length, sequence_length)), -1, 0)
-            lookahead_padding_mask = tf.maximum(decoder_padding_mask, lookahead_padding_mask)
-        else:
-            lookahead_padding_mask = None
+    def create_mask_by_embedding(self,
+                                 encoder_input: tf.Tensor,
+                                 decoder_input: Optional[tf.Tensor]=None) -> Tuple[tf.Tensor, tf.Tensor]:
+        encoder_input = encoder_input[:, :, 0]
+        decoder_input = decoder_input[:, :, 0] if decoder_input is not None else None
+        encoder_padding_mask, lookahead_padding_mask = self.create_mask_by_onehot(encoder_input=encoder_input,
+                                                                                  decoder_input=decoder_input)
         return encoder_padding_mask, lookahead_padding_mask
 
     def create_positional_encoding_table(self) -> tf.Tensor:

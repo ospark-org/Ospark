@@ -73,7 +73,7 @@ class ExdeepTransformer(Transformer):
                                                                    encoder_padding_mask=encoder_padding_mask,
                                                                    decoder_padding_mask=lookahead_mask)
 
-    def recover_transformer(self) -> NoReturn:
+    def back_to_standard(self) -> NoReturn:
         _ = [encoder_block.recover_transformer() for encoder_block in self.encoder_blocks]
         if self.decoder_blocks != []:
             _ = [decoder_block.recover_transformer() for decoder_block in self.decoder_blocks]

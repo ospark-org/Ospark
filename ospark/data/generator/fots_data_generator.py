@@ -54,7 +54,7 @@ class FOTSDataGenerator(DataGenerator):
                  data_folder: DataFolder,
                  batch_size: int,
                  height_threshold: int,
-                 filtered_words: Set[str],
+                 ignore_words: Set[str],
                  target_size: list,
                  image_shrink_scale: float,
                  padding_method: Optional[str]="center",
@@ -67,7 +67,7 @@ class FOTSDataGenerator(DataGenerator):
         :param labeling_folder:
         :param batch_size:
         :param height_threshold:
-        :param filtered_words:
+        :param ignore_words:
         image_size: np.ndarray
             image size [width, height]
         :param image_shrink_scale:
@@ -79,7 +79,7 @@ class FOTSDataGenerator(DataGenerator):
 
         self._folder                = data_folder
         self._height_threshold      = height_threshold
-        self._filtered_words        = filtered_words
+        self._ignore_words          = ignore_words
         self._shrink_image          = image_shrink_scale
         self._bbox_shrink_scale     = bbox_shrink_scale
         self._target_size           = np.array(target_size)
@@ -110,8 +110,8 @@ class FOTSDataGenerator(DataGenerator):
         return self._height_threshold
 
     @property
-    def filtered_words(self) -> Set[str]:
-        return self._filtered_words
+    def ignore_words(self) -> Set[str]:
+        return self._ignore_words
 
     @property
     def shrink_image(self) -> float:
@@ -176,7 +176,7 @@ class FOTSDataGenerator(DataGenerator):
         for index in self._data_path.range(step=self.step):
             training_data_path, labeling_data_path = self.folder.get_files(index=index)
             self._data_path.training_data_paths = training_data_path
-            self._data_path.label_data_paths = labeling_data_path
+            self._data_path.label_data_paths    = labeling_data_path
         training_data = self.process_training_data(self._data_path.training_data_paths)
         target_image, words, bbox_points = self.process_target_data(self._data_path.label_data_paths)
         self.dataset.data_setting(training_data=training_data,
@@ -234,7 +234,7 @@ class FOTSDataGenerator(DataGenerator):
                 detection_map += self.create_detection_map(bbox_points=bbox_points)
                 target_word    = ",".join(target[8:])
 
-                if target_word in self.filtered_words:
+                if target_word in self.ignore_words:
                     continue
                 points.append(bbox_points)
                 words.append(target_word)

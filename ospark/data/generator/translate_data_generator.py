@@ -102,7 +102,6 @@ class TranslateDataGenerator(DataGenerator):
         self._target_data_bos     = [target_data_encoder.vocab_size]
         self._train_data_eos      = [train_data_encoder.vocab_size + 1]
         self._target_data_eos     = [target_data_encoder.vocab_size + 1]
-        self._filter_rules        = []
         self._padding_range       = padding_range or 50
         self._max_length          = max_length
         self._next_interval       = None
@@ -153,9 +152,6 @@ class TranslateDataGenerator(DataGenerator):
     @property
     def element_index(self) -> int:
         return self._element_index
-
-    def add_filter_rules(self, fn: Callable[[List[int], List[int]], bool]):
-        self._filter_rules.append(fn)
 
     def encode_bos_eos(self,
                        train_sequence: str,

@@ -6,24 +6,22 @@ class Backbone(ModelObject):
 
     def __init__(self,
                  obj_name: str,
-                 use_catch: Optional[bool]=None,
-                 trainable: Optional[bool]=None):
-        super().__init__(obj_name=obj_name)
-        self._trainable = trainable or True
-        self._use_catch = use_catch or False
-        self._catch_box = []
+                 is_keep_blocks: Optional[bool]=None,
+                 is_training: Optional[bool]=None):
+        super().__init__(obj_name=obj_name, is_training=is_training)
+        if is_keep_blocks is not None:
+            self._is_keep_blocks = is_keep_blocks
+        else:
+            self._is_keep_blocks = False
+        self._block_register = []
 
     @property
-    def trainable(self) -> bool:
-        return self._trainable
+    def is_keep_blocks(self) -> bool:
+        return self._is_keep_blocks
 
     @property
-    def use_catch(self) -> bool:
-        return self._use_catch
-
-    @property
-    def catch_box(self) -> list:
-        return self._catch_box
+    def block_register(self) -> list:
+        return self._block_register
 
     def in_creating(self) -> NoReturn:
         raise NotImplementedError("Is required")

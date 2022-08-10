@@ -1,5 +1,5 @@
 from ospark.nn.optimizer.learning_rate_schedule import TransformerWarmup
-from ospark.models.builder import build_exdeep_transformer, build_performer
+from ospark.models.builder import FormerBuilder
 from ospark.data.generator.translate_data_generator import TranslateDataGenerator
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
 from ospark.trainer.transformer_trainer import TransformerTrainer
@@ -122,28 +122,28 @@ else:
     weights = None
 
 print("建立模型")
-exdeep_model = build_exdeep_transformer(encoder_block_number=encoder_block_number,
-                                        decoder_block_number=decoder_block_number,
-                                        trained_weights=weights,
-                                        head_number=head_number,
-                                        embedding_size=embedding_size,
-                                        scale_rate=scale_rate,
-                                        class_number=target_data_text_encoder.vocab_size + 2,
-                                        encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
-                                        decoder_corpus_size=target_data_text_encoder.vocab_size + 2,
-                                        is_training=True,
-                                        dropout_rate=dropout_rate)
+exdeep_model = FormerBuilder.exdeep_transformer(encoder_block_number=encoder_block_number,
+                                                decoder_block_number=decoder_block_number,
+                                                trained_weights=weights,
+                                                head_number=head_number,
+                                                embedding_size=embedding_size,
+                                                scale_rate=scale_rate,
+                                                class_number=target_data_text_encoder.vocab_size + 2,
+                                                encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
+                                                decoder_corpus_size=target_data_text_encoder.vocab_size + 2,
+                                                is_training=True,
+                                                dropout_rate=dropout_rate)
 
-# performer_model = build_performer(block_number=encoder_block_number,
-#                                   head_number=head_number,
-#                                   embedding_size=embedding_size,
-#                                   scale_rate=scale_rate,
-#                                   random_projections_number=16,
-#                                   class_number=target_data_text_encoder.vocab_size + 2,
-#                                   encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
-#                                   decoder_corpus_size=target_data_text_encoder.vocab_size + 2,
-#                                   is_training=True,
-#                                   dropout_rate=dropout_rate)
+# performer_model = FormerBuilder.performer(block_number=encoder_block_number,
+#                                           head_number=head_number,
+#                                           embedding_size=embedding_size,
+#                                           scale_rate=scale_rate,
+#                                           random_projections_number=16,
+#                                           class_number=target_data_text_encoder.vocab_size + 2,
+#                                           encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
+#                                           decoder_corpus_size=target_data_text_encoder.vocab_size + 2,
+#                                           is_training=True,
+#                                           dropout_rate=dropout_rate)
 
 # 設定 learning_rate、optimizer、loss_function
 learning_rate = TransformerWarmup(model_dimension=embedding_size, warmup_step=4000.)

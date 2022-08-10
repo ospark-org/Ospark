@@ -15,8 +15,8 @@ class Unet(Backbone):
                  downsampling: Union[Block, Backbone],
                  upsampling: Block):
         super().__init__(obj_name=obj_name,
-                         use_catch=False,
-                         trainable=True)
+                         is_keep_blocks=False,
+                         is_training=True)
         self._downsampling = downsampling
         self._upsampling   = upsampling
 
@@ -45,7 +45,7 @@ class Unet(Backbone):
     def build_shared_conv(cls,
                           input_channels: Optional[List[int]]=None,
                           output_channels: Optional[List[int]]=None,
-                          trainable: Optional[bool]=None) -> Unet:
+                          is_training: Optional[bool]=None) -> Unet:
         """
 
         Args:
@@ -53,20 +53,19 @@ class Unet(Backbone):
                 default value is [2048 + 1024, 128 + 512, 64 + 256].
             output_channels: List[int]
                 default value is [128, 64, 32].
-            trainable: bool
+            is_training: bool
                 default value is True.
         Returns:
             Implemented Unet.
         """
 
-        trainable       = trainable or True
-        encoder         = resnet50(trainable=trainable, catch_output=True)
+        encoder         = resnet50(is_training=is_training, catch_output=True)
         input_channels  = input_channels or [2048 + 1024, 128 + 512, 64 + 256]
         output_channels = output_channels or [128, 64, 32]
 
         decoder = shared_convolution_decoder(input_channels=input_channels,
                                              output_channels=output_channels,
-                                             trainable=trainable)
+                                             is_training=is_training)
         shared_convolution = cls(obj_name="shared_convolution",
                                  downsampling=encoder,
                                  upsampling=decoder)

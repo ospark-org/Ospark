@@ -34,7 +34,7 @@ class Informer(Former):
         self._positional_encoding = positional_encoding_delegate or PositionalEncodingDelegate()
 
     def pipeline(self, encoder_input: tf.Tensor, decoder_input: tf.Tensor=None) -> tf.Tensor:
-        encoder_padding_mask, encoder_encoding_mask, prediction_mask = self.create_mask_matrix(encoder_input)
+        encoder_padding_mask, encoder_encoding_mask, prediction_mask = self.create_mask_matrix(encoder_input=encoder_input)
         encoder_input = self.positional_encoding(encoder_input, encoder_encoding_mask)
         encoder_input = self.encoder_dropout_layer(encoder_input, training=self.is_training)
         output = encoder_input

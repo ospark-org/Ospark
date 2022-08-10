@@ -41,7 +41,7 @@ data_folder   = DataFolder(train_data_folder=training_data_folder, label_data_fo
 data_generator = FOTSDataGenerator(data_folder=data_folder,
                                    batch_size=2,
                                    height_threshold=8,
-                                   filtered_words={"###"},
+                                   ignore_words={"###"},
                                    target_size=[1280, 720],
                                    image_shrink_scale=0.25)
 

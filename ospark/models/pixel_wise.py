@@ -45,7 +45,7 @@ class PixelWiseDetection(Model):
 
 
 def fots_detection_model(trainable: bool, retrained_weights):
-    backbone = Unet.build_shared_conv(trainable=trainable)
+    backbone = Unet.build_shared_conv(is_training=trainable)
     classify_layer = ConvolutionLayer(obj_name="classify_layer",
                                       filter_size=[1, 1, 32, 6],
                                       strides=[1, 1, 1, 1],

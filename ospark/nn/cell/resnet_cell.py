@@ -10,18 +10,13 @@ class ResnetCell(Cell):
     def __init__(self,
                  obj_name: str,
                  blocks: List[ResnetBlock],
-                 trainable: bool):
-        super().__init__(obj_name=obj_name)
+                 is_training: bool):
+        super().__init__(obj_name=obj_name, is_training=is_training)
         self._blocks    = blocks
-        self._trainable = trainable
 
     @property
     def blocks(self) -> List[ResnetBlock]:
         return self._blocks
-
-    @property
-    def trainable(self) -> bool:
-        return self._trainable
 
     @classmethod
     def build_cell(cls,
@@ -32,7 +27,7 @@ class ResnetCell(Cell):
                    input_channel: int,
                    main_channel: int,
                    strides: int,
-                   trainable: bool
+                   is_training: bool
                    ) -> ResnetCell:
         blocks = []
         if block_type == "block_1":
@@ -51,16 +46,16 @@ class ResnetCell(Cell):
                                   scale_rate=scale_rate,
                                   strides=strides,
                                   use_shortcut_conv=True,
-                                  trainable=trainable)
+                                  is_training=is_training)
             else:
                 block = block_cls(obj_name=name,
                                   input_channel=input_channel,
                                   main_channel=main_channel,
                                   scale_rate=scale_rate,
                                   strides=1,
-                                  trainable=trainable)
+                                  is_training=is_training)
             blocks.append(block)
-        return cls(obj_name=obj_name, blocks=blocks, trainable=trainable)
+        return cls(obj_name=obj_name, blocks=blocks, is_training=is_training)
 
     def in_creating(self) -> NoReturn:
         for block in self.blocks:
@@ -78,7 +73,7 @@ def resnet_cells(cells_number: List[int],
                  main_channels: List[int],
                  scale_rate: int,
                  block_type: str,
-                 trainable: bool) -> List[ResnetCell]:
+                 is_training: bool) -> List[ResnetCell]:
     cells = []
     for i, parameters in enumerate(zip(cells_number, input_channels, main_channels)):
         block_number, input_channel, main_channel = parameters
@@ -91,7 +86,7 @@ def resnet_cells(cells_number: List[int],
                                          input_channel=input_channel,
                                          main_channel=main_channel,
                                          strides=1,
-                                         trainable=trainable
+                                         is_training=is_training
                                          )
         else:
             cell = ResnetCell.build_cell(obj_name=name,
@@ -101,7 +96,7 @@ def resnet_cells(cells_number: List[int],
                                          input_channel=input_channel,
                                          main_channel=main_channel,
                                          strides=2,
-                                         trainable=trainable
+                                         is_training=is_training
                                          )
         cells.append(cell)
     return cells

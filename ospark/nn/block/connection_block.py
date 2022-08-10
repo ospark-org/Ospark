@@ -36,7 +36,9 @@ class ConnectionBlock(Block):
             input_data)
 
 
-def shared_convolution_decoder(input_channels: List[int], output_channels: List[int], trainable: bool) -> ConnectionBlock:
+def shared_convolution_decoder(input_channels: List[int],
+                               output_channels: List[int],
+                               is_training: bool) -> ConnectionBlock:
     connection_layers = []
     for i, channels in enumerate(zip(input_channels, output_channels)):
         input_channel, output_channel = channels
@@ -44,9 +46,10 @@ def shared_convolution_decoder(input_channels: List[int], output_channels: List[
         connection_layer = ConnectionLayer(obj_name=name,
                                            concatenated_channel=input_channel,
                                            output_channel=output_channel,
-                                           is_training=trainable)
+                                           is_training=is_training)
         connection_layers.append(connection_layer)
-    decoder = ConnectionBlock(obj_name="shared_decoder", connection_layers=connection_layers)
+    decoder = ConnectionBlock(obj_name="shared_decoder",
+                              connection_layers=connection_layers)
     return decoder
 
 

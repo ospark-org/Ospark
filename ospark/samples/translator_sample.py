@@ -1,6 +1,6 @@
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
 from ospark.data.generator.translate_data_generator import TranslateDataGenerator
-from ospark.models.builder import build_exdeep_transformer
+from ospark.models.builder import FormerBuilder
 from ospark.predictor.translator import Translator
 from typing import Optional
 from sacrebleu.metrics import BLEU
@@ -73,14 +73,14 @@ target_data_text_encoder = text_encoder(folder_path=folder_path,
                                         vocabulary_size=vocabulary_size,
                                         datasets=target_datasets)
 
-exdeep_model = build_exdeep_transformer(encoder_block_number=int(encoder_block_number),
-                                        decoder_block_number=int(decoder_block_number),
-                                        head_number=int(head_number),
-                                        embedding_size=int(embedding_size),
-                                        scale_rate=scale_rate,
-                                        class_number=target_data_text_encoder.vocab_size + 2,
-                                        encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
-                                        decoder_corpus_size=target_data_text_encoder.vocab_size + 2)
+exdeep_model = FormerBuilder.exdeep_transformer(encoder_block_number=int(encoder_block_number),
+                                                decoder_block_number=int(decoder_block_number),
+                                                head_number=int(head_number),
+                                                embedding_size=int(embedding_size),
+                                                scale_rate=scale_rate,
+                                                class_number=target_data_text_encoder.vocab_size + 2,
+                                                encoder_corpus_size=train_data_text_encoder.vocab_size + 2,
+                                                decoder_corpus_size=target_data_text_encoder.vocab_size + 2)
 
 
 # 建立 data_generator

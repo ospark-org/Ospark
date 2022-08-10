@@ -16,8 +16,8 @@ class DeepTransformerEncoder(TransformerEncoderBlock):
         return output, catch_variance
 
     def recover_transformer(self) -> NoReturn:
-        self.assigned.attention.recover_transformer()
-        self.assigned.feedforward.recover_transformer()
+        self.assigned.attention.back_to_standard()
+        self.assigned.feedforward.back_to_standard()
 
 
 class DeepTransformerDecoder(TransformerDecoderBlock):
@@ -41,9 +41,9 @@ class DeepTransformerDecoder(TransformerDecoderBlock):
         return output, catch_variance
 
     def recover_transformer(self) -> NoReturn:
-        self.assigned.attention.recover_transformer()
-        self.assigned.encode_decode_attention.recover_transformer()
-        self.assigned.feedforward.recover_transformer()
+        self.assigned.attention.back_to_standard()
+        self.assigned.encode_decode_attention.back_to_standard()
+        self.assigned.feedforward.back_to_standard()
 
 
 def exdeep_encoder_block(obj_name:str,

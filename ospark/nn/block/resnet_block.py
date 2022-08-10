@@ -14,14 +14,13 @@ class ResnetBlock(Block):
                  kernel_size: Optional[int]=3,
                  strides: Optional[int]=1,
                  use_shortcut_conv: Optional[bool]=False,
-                 trainable: Optional[bool]=True) -> NoReturn:
-        super().__init__(obj_name=obj_name)
+                 is_training: Optional[bool]=True) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training)
         self._input_channel  = input_channel
         self._main_channel   = main_channel
         self._scale_rate     = scale_rate
         self._kernel_size    = kernel_size
         self._strides        = strides
-        self._trainable      = trainable
 
         self._use_shortcut_conv  = use_shortcut_conv
 
@@ -48,10 +47,6 @@ class ResnetBlock(Block):
     @property
     def use_shortcut_conv(self) -> bool:
         return self._use_shortcut_conv
-
-    @property
-    def trainable(self) -> bool:
-        return self._trainable
 
     def in_creating(self) -> NoReturn:
         if self.use_shortcut_conv:
