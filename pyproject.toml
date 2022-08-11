@@ -2,7 +2,7 @@
 name = "ospark"
 version = "0.0.3"
 description = "Building powerful model & Enjoy it!"
-authors = ["ospark-org <donggicai1991@gmail.com"]
+authors = ["ospark-org <donggicai1991@gmail.com>"]
 keywords = ["transformer-series", "former-series", "former", "transformer"]
 license = "Apache License 2.0"
 
