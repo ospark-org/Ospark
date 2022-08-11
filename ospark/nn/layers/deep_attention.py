@@ -39,7 +39,7 @@ class DeepAttentionLayer(SelfAttentionLayer):
         output = tf.multiply(input_data, self.res_adaptive_value)
         return output
 
-    def recover_transformer(self) -> NoReturn:
+    def back_to_standard(self) -> NoReturn:
         self._res_adaptive_value = 1
 
 
@@ -78,6 +78,6 @@ class DeepEncoderDecoder(EncoderDecoderAttentionLayer):
         output = tf.multiply(input_data, self.res_adaptive_value)
         return output
 
-    def recover_transformer(self) -> NoReturn:
+    def back_to_standard(self) -> NoReturn:
         self._res_adaptive_value = 1.
 

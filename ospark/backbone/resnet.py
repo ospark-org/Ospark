@@ -26,7 +26,7 @@ class ResnetBackbone(Backbone):
                                                             filter_size=[7, 7, 3, 64],
                                                             strides=[1, 2, 2, 1],
                                                             padding="SAME",
-                                                            trainable=self.is_training))
+                                                            is_training=self.is_training))
         for cell in self.cells:
             self.assign(component=cell)
 

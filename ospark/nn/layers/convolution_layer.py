@@ -65,11 +65,11 @@ class ConvolutionLayer(Layer):
                      filter_size: List[int],
                      strides: List[int],
                      padding: str,
-                     trainable: bool) -> ConvolutionLayer:
+                     is_training: bool) -> ConvolutionLayer:
         activation    = ReLU()
         normalization = BatchNormalization(obj_name="batch_norm",
                                            input_depth=filter_size[-2],
-                                           is_training=trainable)
+                                           is_training=is_training)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,
@@ -84,11 +84,11 @@ class ConvolutionLayer(Layer):
                      filter_size: List[int],
                      strides: List[int],
                      padding: str,
-                     trainable: bool) -> ConvolutionLayer:
+                     is_training: bool) -> ConvolutionLayer:
         activation = ReLU()
         normalization = BatchNormalization(obj_name="batch_norm",
                                            input_depth=filter_size[-1],
-                                           is_training=trainable)
+                                           is_training=is_training)
         return cls(obj_name=obj_name,
                    filter_size=filter_size,
                    strides=strides,

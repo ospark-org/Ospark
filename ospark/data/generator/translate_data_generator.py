@@ -3,6 +3,7 @@ from typing import Optional, NoReturn, List, Tuple, Callable
 import numpy as np
 import tensorflow as tf
 from . import DataGenerator
+from ospark.data.encoder import LanguageDataEncoder
 from tensorflow_datasets.core.deprecated.text.subword_text_encoder import SubwordTextEncoder
 import math
 
@@ -87,8 +88,7 @@ class TranslateDataGenerator(DataGenerator):
     def __init__(self,
                  training_data: List[str],
                  target_data: List[str],
-                 train_data_encoder: SubwordTextEncoder,
-                 target_data_encoder: SubwordTextEncoder,
+                 data_encoder: LanguageDataEncoder,
                  batch_size: int,
                  max_token: Optional[int]=None,
                  max_length: Optional[int]=None,
@@ -96,12 +96,11 @@ class TranslateDataGenerator(DataGenerator):
                  padding_range: Optional[int]=None) -> NoReturn:
         super().__init__(training_data=training_data, target_data=target_data, batch_size=batch_size, initial_step=0)
         self._data_number         = len(training_data)
-        self._train_data_encoder  = train_data_encoder
-        self._target_data_encoder = target_data_encoder
-        self._train_data_bos      = [train_data_encoder.vocab_size]  # 因為 vocab 中並沒有 bos 及 eos，所以新增額外兩個 index 當作 bos 及 eos
-        self._target_data_bos     = [target_data_encoder.vocab_size]
-        self._train_data_eos      = [train_data_encoder.vocab_size + 1]
-        self._target_data_eos     = [target_data_encoder.vocab_size + 1]
+        self._data_encoder        = data_encoder
+        self._train_data_bos      = [data_encoder.train_data_encoder.vocab_size]  # 因為 vocab 中並沒有 bos 及 eos，所以新增額外兩個 index 當作 bos 及 eos
+        self._target_data_bos     = [data_encoder.label_data_encoder.vocab_size]
+        self._train_data_eos      = [data_encoder.train_data_encoder.vocab_size + 1]
+        self._target_data_eos     = [data_encoder.label_data_encoder.vocab_size + 1]
         self._padding_range       = padding_range or 50
         self._max_length          = max_length
         self._next_interval       = None
@@ -114,12 +113,8 @@ class TranslateDataGenerator(DataGenerator):
         return self._data_number
 
     @property
-    def train_data_encoder(self) -> SubwordTextEncoder:
-        return self._train_data_encoder
-
-    @property
-    def target_data_encoder(self) -> SubwordTextEncoder:
-        return self._target_data_encoder
+    def data_encoder(self) -> LanguageDataEncoder:
+        return self._data_encoder
 
     @property
     def train_data_bos(self) -> List[int]:
@@ -160,8 +155,8 @@ class TranslateDataGenerator(DataGenerator):
             train_sequence  = train_sequence.numpy().decode("utf-8")
             target_sequence = target_sequence.numpy().decode("utf-8")
 
-        train_sequence = self.train_data_bos + self.train_data_encoder.encode(train_sequence) + self.train_data_eos
-        target_sequence = self.target_data_bos + self.target_data_encoder.encode(target_sequence) + self.target_data_eos
+        train_sequence = self.train_data_bos + self.data_encoder.encode_train_data(train_sequence) + self.train_data_eos
+        target_sequence = self.target_data_bos + self.data_encoder.encode_label_data(target_sequence) + self.target_data_eos
         return np.array(train_sequence), np.array(target_sequence)
 
     def filter_length(self, train_sequence: np.ndarray, target_sequence: np.ndarray) -> bool:
@@ -232,20 +227,18 @@ class TranslateDataGenerator(DataGenerator):
         return self
 
     @classmethod
-    def wrapped_tf_datasets(cls,
-                            train_data: List[str],
-                            target_data: List[str],
-                            train_data_encoder: SubwordTextEncoder,
-                            target_data_encoder: SubwordTextEncoder,
-                            batch_size: int,
-                            max_token: Optional[int]=None,
-                            max_length: Optional[int]=None,
-                            start_index: Optional[int]=None,
-                            padding_range: Optional[int]=None) -> tf.data.Dataset:
+    def transform_into_tf_datasets(cls,
+                                   train_data: List[str],
+                                   target_data: List[str],
+                                   data_encoder: LanguageDataEncoder,
+                                   batch_size: int,
+                                   max_token: Optional[int]=None,
+                                   max_length: Optional[int]=None,
+                                   start_index: Optional[int]=None,
+                                   padding_range: Optional[int]=None) -> tf.data.Dataset:
         generator = cls(training_data=train_data,
                         target_data=target_data,
-                        train_data_encoder=train_data_encoder,
-                        target_data_encoder=target_data_encoder,
+                        data_encoder=data_encoder,
                         batch_size=batch_size,
                         max_token=max_token,
                         max_length=max_length,

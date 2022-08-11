@@ -3,6 +3,7 @@ from ospark.data.generator.translate_data_generator import TranslateDataGenerato
 from ospark.models.builder import FormerBuilder
 from ospark.predictor.translator import Translator
 from typing import Optional
+from ospark.data.encoder import LanguageDataEncoder
 from sacrebleu.metrics import BLEU
 import tensorflow_datasets as tfds
 import numpy as np
@@ -83,10 +84,11 @@ exdeep_model = FormerBuilder.exdeep_transformer(encoder_block_number=int(encoder
                                                 decoder_corpus_size=target_data_text_encoder.vocab_size + 2)
 
 
+data_encoder   = LanguageDataEncoder(train_data_encoder=train_data_text_encoder,
+                                     label_data_encoder=target_data_text_encoder)
 # 建立 data_generator
 data_generator = TranslateDataGenerator(datasets=train_data,
-                                        train_data_encoder=train_data_text_encoder,
-                                        target_data_encoder=target_data_text_encoder,
+                                        data_encoder=data_encoder,
                                         batch_size=1,
                                         take_number=None,
                                         max_length=None)

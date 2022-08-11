@@ -57,7 +57,7 @@ class ResnetBlock(Block):
                                                                             self.scale_rate * self.main_channel],
                                                                strides=[1, self.strides, self.strides, 1],
                                                                padding="SAME",
-                                                               trainable=self.trainable)
+                                                               is_training=self.is_training)
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         if self.use_shortcut_conv:
@@ -79,7 +79,7 @@ class Block1(ResnetBlock):
                                                                           self.main_channel],
                                                              strides=[1, self.strides, self.strides, 1],
                                                              padding="SAME",
-                                                             trainable=self.trainable)
+                                                             is_training=self.is_training)
         else:
             self.layer_1X1_0 = ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_0",
                                                              filter_size=[1,
@@ -88,7 +88,7 @@ class Block1(ResnetBlock):
                                                                           self.main_channel],
                                                              strides=[1, self.strides, self.strides, 1],
                                                              padding="SAME",
-                                                             trainable=self.trainable)
+                                                             is_training=self.is_training)
 
         self.layer_3X3 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3",
                                                        filter_size=[self.kernel_size,
@@ -97,7 +97,7 @@ class Block1(ResnetBlock):
                                                                     self.main_channel],
                                                        strides=[1, 1, 1, 1],
                                                        padding="SAME",
-                                                       trainable=self.trainable)
+                                                       is_training=self.is_training)
         self.layer_1X1_1 = ConvolutionLayer.conv_bn_relu(obj_name="layer_1X1_1",
                                                          filter_size=[1,
                                                                       1,
@@ -105,7 +105,7 @@ class Block1(ResnetBlock):
                                                                       self.scale_rate * self.main_channel],
                                                          strides=[1, 1, 1, 1],
                                                          padding="SAME",
-                                                         trainable=self.trainable)
+                                                         is_training=self.is_training)
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
@@ -127,7 +127,7 @@ class Block2(ResnetBlock):
                                                                           self.main_channel],
                                                              strides=[1, self.strides, self.strides, 1],
                                                              padding="SAME",
-                                                             trainable=self.trainable)
+                                                             is_training=self.is_training)
         else:
             self.layer_3X3_0 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_0",
                                                              filter_size=[3,
@@ -136,7 +136,7 @@ class Block2(ResnetBlock):
                                                                           self.main_channel],
                                                              strides=[1, self.strides, self.strides, 1],
                                                              padding="SAME",
-                                                             trainable=self.trainable)
+                                                             is_training=self.is_training)
         self.layer_3X3_1 = ConvolutionLayer.conv_bn_relu(obj_name="layer_3X3_1",
                                                          filter_size=[3,
                                                                       3,
@@ -144,7 +144,7 @@ class Block2(ResnetBlock):
                                                                       self.scale_rate * self.main_channel],
                                                          strides=[1, 1, 1, 1],
                                                          padding="SAME",
-                                                         trainable=self.trainable)
+                                                         is_training=self.is_training)
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data

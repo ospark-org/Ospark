@@ -46,12 +46,12 @@ class ConnectionLayer(Layer):
                                                      filter_size=[1, 1, self.concatenated_channel, self.output_channel],
                                                      strides=[1, 1, 1, 1],
                                                      padding="SAME",
-                                                     trainable=self.is_training)
+                                                     is_training=self.is_training)
         self._conv_2 = ConvolutionLayer.conv_bn_relu(obj_name="conv_layer",
                                                      filter_size=[3, 3, self.output_channel, self.output_channel],
                                                      strides=[1, 1, 1, 1],
                                                      padding="SAME",
-                                                     trainable=self.is_training)
+                                                     is_training=self.is_training)
 
     def in_creating(self) -> NoReturn:
         self._convolution_1 = self.conv_1

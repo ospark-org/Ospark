@@ -75,7 +75,7 @@ class ExdeepTransformerTrainer(Trainer):
 
             print("=" * 24)
         else:
-            self.model.recover_transformer()
+            self.model.back_to_standard()
         print("Training phase start.")
         self.training_process(epoch_number=self.epoch_number)
         print("Training phase end.")

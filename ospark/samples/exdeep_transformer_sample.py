@@ -4,6 +4,7 @@ from ospark.data.generator.translate_data_generator import TranslateDataGenerato
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
 from ospark.trainer.transformer_trainer import TransformerTrainer
 from ospark.nn.loss_function import SparseCategoricalCrossEntropy
+from ospark.data.encoder import LanguageDataEncoder
 from typing import Optional
 import tensorflow_datasets as tfds
 import tensorflow_addons as tfa
@@ -105,10 +106,12 @@ print("拆分 train data")
 training_data, target_data = list(zip(*train_examples))
 # 建立 data_generator
 print("建立 data generator")
+data_encoder   = LanguageDataEncoder(train_data_encoder=train_data_text_encoder,
+                                     label_data_encoder=target_data_text_encoder)
+
 data_generator = TranslateDataGenerator(training_data=training_data,
                                         target_data=target_data,
-                                        train_data_encoder=train_data_text_encoder,
-                                        target_data_encoder=target_data_text_encoder,
+                                        data_encoder=data_encoder,
                                         batch_size=batch_size,
                                         max_length=max_length,
                                         max_token=3000)
