@@ -1,16 +1,13 @@
-import tensorflow as tf
-from abc import ABC, abstractmethod
 from typing import NoReturn
 
-class Metrics(ABC):
 
-    def __init__(self, class_category: dict) -> NoReturn:
-        self.class_category  = class_category
+class Metrics:
 
-    @abstractmethod
+    def __init__(self) -> NoReturn:
+        pass
+
     def process(self, prediction, target) -> NoReturn:
-        return NotImplemented
+        return NotImplementedError()
 
-    @abstractmethod
-    def get(self) -> dict:
-        return NotImplemented
+    def calculate_start(self):
+        return NotImplementedError()

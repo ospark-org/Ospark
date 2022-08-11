@@ -8,12 +8,16 @@ from collections import defaultdict
 class ConfusionMatrix(Metrics):
 
     def __init__(self, class_category: dict) -> NoReturn:
-        super().__init__(class_category)
-        self._counter       = defaultdict(int)
+        self._class_category = class_category
+        self._counter        = defaultdict(int)
 
     @property
     def counter(self):
         return self._counter
+
+    @property
+    def class_category(self) -> dict:
+        return self._class_category
 
     def process(self, prediction: tf.Tensor, target: tf.Tensor) -> NoReturn:
         prediction_index = tf.argmax(prediction, axis=-1).numpy()
@@ -21,14 +25,14 @@ class ConfusionMatrix(Metrics):
         for combined_index in zip(target_index[0], prediction_index[0]):
             self.counter[combined_index] += 1
 
-    def get(self) -> dict:
+    def calculate_start(self) -> dict:
         metrics = {}
-        catrgory = sorted(self.class_category.keys(), key=lambda x:self.class_category[x])
+        category = sorted(self.class_category.keys(), key=lambda x: self.class_category[x])
         basic_matrix = np.zeros(shape=[len(self.class_category), len(self.class_category)])
         for index, count in self.counter.items():
             basic_matrix[index] = count
         print(basic_matrix)
         metrics["accuracy"]  = np.sum(np.diagonal(basic_matrix)) / np.sum(basic_matrix)
-        metrics["recall"]    = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=0)))
-        metrics["precision"] = dict(zip(catrgory, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=1)))
+        metrics["recall"]    = dict(zip(category, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=1)))
+        metrics["precision"] = dict(zip(category, np.diagonal(basic_matrix) / np.sum(basic_matrix, axis=0)))
         return metrics

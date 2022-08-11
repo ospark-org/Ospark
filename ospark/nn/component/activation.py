@@ -2,6 +2,7 @@ import tensorflow as tf
 from typing import NoReturn
 
 class Activation:
+
     def __init_subclass__(cls) -> NoReturn:
         super().__init_subclass__()
         setattr(Activation, cls.__name__, cls)
@@ -12,18 +13,24 @@ class Activation:
     def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
         return self.calculate(input_data=input_data)
 
+
 class PassActivation(Activation):
 
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return input_data
 
+
 class ReLU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.relu(input_data)
 
+
 class ELU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.elu(input_data)
+
 
 class LeakyReLU(Activation):
 
@@ -40,15 +47,18 @@ class LeakyReLU(Activation):
 
 
 class SELU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.selu(input_data)
 
 
 class CReLU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.crelu(input_data)
 
 
 class GELU(Activation):
+
     def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
         return tf.nn.gelu(input_data)
