@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ospark"
-version = "0.0.3"
+version = "0.0.4.beta"
 description = "Building powerful model & Enjoy it!"
 authors = ["ospark-org <donggicai1991@gmail.com>"]
 keywords = ["transformer-series", "former-series", "former", "transformer"]
