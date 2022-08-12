@@ -1,5 +1,5 @@
 # Ospark
-Ospark currently based on Tensorflow 2.3+ and Python 3.7+ to easy and quick build/tune "former series models" that include Transformer, Informer, ExDeep Performance and FOTS-attention these powerful models by yourself. Now is alpha version we're internal testing and will release the beta version as soon.
+Ospark currently based on Tensorflow 2.3+ and Python 3.7+ to easy and quick build/tune "former series models" that include Transformer, Informer, ExDeep Performance and FOTS-attention these powerful models by yourself. Now is beta release, we're internal testing and will release the beta version as soon.
 
 # Ospark Guidelines
 
@@ -11,15 +11,9 @@ Ospark currently based on Tensorflow 2.3+ and Python 3.7+ to easy and quick buil
 $ pip install ospark
 ```
 
-# Build yourself model.
+Ospark divides the model into Layer, Block and Model.
 
-Ospark divides the model into Layer, Block and Model. 
-
-## Weight initializer
-
-Osaprk provides some simple weight initialization methods.
-
-First, import weight_initializer
+Ospark provides some common weight initialization methods.
 
 ```python
 from ospark import weight_initializer
