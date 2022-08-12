@@ -200,7 +200,7 @@ class ClassifyModel(Model):
 ```python
 model = ClassifyModel("classify_model", 3, True)
 weights = model.get_weights()
-print("weights: ", weights.kesy())
+print("weights: ", weights.keys())
 ```
 ```bash
 weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/block_2/layer_2/bias', 'classify_model/block_2/layer_1/weight', 'classify_model/block_2/layer_1/bias', 'classify_model/block_1/layer_2/weight', 'classify_model/block_1/layer_2/bias', 'classify_model/block_1/layer_1/weight', 'classify_model/block_1/layer_1/bias', 'classify_model/classify_layer/weight', 'classify_model/classify_layer/bias'])
