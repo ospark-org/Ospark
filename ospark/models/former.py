@@ -1,3 +1,4 @@
+import ospark.utility.weight_initializer
 from ospark.nn.layers.embedding_layer import EmbeddingLayer
 from ospark.nn.block import Block
 from ospark.nn.component.weight import Weight
@@ -34,10 +35,10 @@ class Former(Model):
         self._embedding_layer      = None
         self._embedding_scale_rate = tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
         self._encoder_dropout_layer= tf.keras.layers.Dropout(rate=dropout_rate)
-        self._classify_layer       = ospark.weight.glorot_uniform(obj_name="classify_layer",
-                                                                  shape=[self.embedding_size, class_number])
-        self._classify_layer_bias  = ospark.weight.zeros(obj_name="classify_layer_bias",
-                                                         shape=[class_number])
+        self._classify_layer       = ospark.utility.weight_initializer.glorot_uniform(obj_name="classify_layer",
+                                                                                      shape=[self.embedding_size, class_number])
+        self._classify_layer_bias  = ospark.utility.weight_initializer.zeros(obj_name="classify_layer_bias",
+                                                                             shape=[class_number])
         self._classifier           = tf.nn.sigmoid if class_number == 2 else tf.nn.softmax
         self._use_classifier       = use_classifier
 

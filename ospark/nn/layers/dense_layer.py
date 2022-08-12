@@ -1,3 +1,4 @@
+import ospark.utility.weight_initializer
 from ospark.nn.layers import Layer
 from typing import List, NoReturn, Optional, Callable, Tuple, Union
 from ospark.nn.component.activation import Activation, PassActivation
@@ -56,9 +57,9 @@ class DenseLayer(Layer):
                 input_dimension = self.hidden_dimension[i - 1]
             name = f"layer_{i}"
             self._layers_name.append(name)
-            setattr(self, name, ospark.weight.glorot_uniform(obj_name=name, shape=[input_dimension, output_dimension]))
+            setattr(self, name, ospark.utility.weight_initializer.glorot_uniform(obj_name=name, shape=[input_dimension, output_dimension]))
             if self.use_bias:
-                setattr(self, name + "_bias", ospark.weight.zeros(obj_name=name + "_bias", shape=[output_dimension]))
+                setattr(self, name + "_bias", ospark.utility.weight_initializer.zeros(obj_name=name + "_bias", shape=[output_dimension]))
 
     def bias_forward(self, input_data: tf.Tensor, weight: Tuple[Weight, Weight]) -> tf.Tensor:
         return self.activation(tf.matmul(input_data, weight[0]) + weight[1])

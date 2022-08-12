@@ -1,3 +1,4 @@
+import ospark.utility.weight_initializer
 from ospark.nn.layers import *
 import ospark
 
@@ -23,8 +24,8 @@ class EmbeddingLayer(Layer):
 
     def in_creating(self) -> NoReturn:
         with tf.device("cpu:0"):
-            self._embedding_layer = ospark.weight.uniform(obj_name="embedding_layer",
-                                                          shape=[self.corpus_size,
+            self._embedding_layer = ospark.utility.weight_initializer.uniform(obj_name="embedding_layer",
+                                                                              shape=[self.corpus_size,
                                                                  self.embedding_dimension])
             # self.assign(component=ospark.weight.uniform(obj_name="embedding_layer",
             #                                             weight_shape=[self.corpus_size,

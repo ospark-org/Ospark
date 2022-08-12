@@ -63,13 +63,6 @@ class MetaObject(type):
             elif isinstance(attr_value, list):
                 dismantling_nest_structure(input_data=attr_value, obj=obj)
         return obj
-        # return obj
-        # for attr_name, attr_value in obj.__dict__.items():
-        #     if isinstance(attr_value, ModelObject) or isinstance(attr_value, Weight):
-        #         obj.assign(attr_value)
-        #     elif isinstance(attr_value, list):
-        #         dismantling_nest_structure(input_data=attr_value, obj=obj)
-        # return obj
 
 
 class ModelObject(metaclass=MetaObject):

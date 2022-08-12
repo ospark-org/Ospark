@@ -1,4 +1,6 @@
 import tensorflow as tf
+
+import ospark.utility.weight_initializer
 from ospark.nn.layers import Layer
 from ospark.nn.layers.normalization import Normalization
 from typing import *
@@ -54,35 +56,35 @@ class SelfAttentionLayer(Layer):
         return 1 - tf.linalg.band_part(tf.ones((self.sequence_length, self.sequence_length)), -1, 0)
 
     def in_creating(self) -> NoReturn:
-        self._q_weights = ospark.weight.glorot_uniform(
+        self._q_weights = ospark.utility.weight_initializer.glorot_uniform(
             obj_name="q_weights",
             shape=[self.embedding_size, self.embedding_size]
         )
-        self._k_weights = ospark.weight.glorot_uniform(
+        self._k_weights = ospark.utility.weight_initializer.glorot_uniform(
             obj_name="k_weights",
             shape=[self.embedding_size, self.embedding_size]
         )
-        self._v_weights = ospark.weight.glorot_uniform(
+        self._v_weights = ospark.utility.weight_initializer.glorot_uniform(
             obj_name="v_weights",
             shape=[self.embedding_size, self.embedding_size]
         )
-        self._q_bias = ospark.weight.zeros(
+        self._q_bias = ospark.utility.weight_initializer.zeros(
             obj_name="q_bias",
             shape=[self.embedding_size]
         )
-        self._k_bias = ospark.weight.zeros(
+        self._k_bias = ospark.utility.weight_initializer.zeros(
             obj_name="k_bias",
             shape=[self.embedding_size]
         )
-        self._v_bias = ospark.weight.zeros(
+        self._v_bias = ospark.utility.weight_initializer.zeros(
             obj_name="v_bias",
             shape=[self.embedding_size]
         )
-        self._output_weights = ospark.weight.glorot_uniform(
+        self._output_weights = ospark.utility.weight_initializer.glorot_uniform(
             obj_name="output_weights",
             shape=[self.embedding_size, self.embedding_size]
         )
-        self._output_bias = ospark.weight.zeros(
+        self._output_bias = ospark.utility.weight_initializer.zeros(
             obj_name="output_bias",
             shape=[self.embedding_size]
         )

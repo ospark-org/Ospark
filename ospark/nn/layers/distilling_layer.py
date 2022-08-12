@@ -1,3 +1,4 @@
+import ospark.utility.weight_initializer
 from . import Layer
 from typing import NoReturn, Optional
 from ospark.nn.component.activation import Activation
@@ -58,8 +59,8 @@ class DistillingLayer(Layer):
         return self._norm
 
     def in_creating(self) -> NoReturn:
-        self._conv_filter = ospark.weight.truncated_normal(obj_name="conv_filter",
-                                                           shape=[self.filter_width,
+        self._conv_filter = ospark.utility.weight_initializer.truncated_normal(obj_name="conv_filter",
+                                                                               shape=[self.filter_width,
                                                                   self.embedding_size,
                                                                   self.embedding_size])
         self._batch_norm  = self.norm

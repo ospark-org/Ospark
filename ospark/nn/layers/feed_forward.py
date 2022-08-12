@@ -1,3 +1,4 @@
+import ospark.utility.weight_initializer
 from . import Layer
 from ospark.nn.layers.normalization import Normalization
 from ospark.nn.component.activation import Activation
@@ -38,16 +39,16 @@ class FeedForwardLayer(Layer):
         return self._dropout_layer
 
     def in_creating(self) -> NoReturn:
-        self._mapping2high_dimensional = ospark.weight.glorot_uniform(
+        self._mapping2high_dimensional = ospark.utility.weight_initializer.glorot_uniform(
                                 obj_name="mapping2high_dimensional",
                                 shape=[self.embedding_size, self.scale_rate * self.embedding_size])
-        self._mapping2low_dimensional = ospark.weight.glorot_uniform(
+        self._mapping2low_dimensional = ospark.utility.weight_initializer.glorot_uniform(
                                 obj_name="mapping2low_dimensional",
                                 shape=[self.scale_rate * self.embedding_size, self.embedding_size])
-        self._high_dimensional_bias = ospark.weight.zeros(
+        self._high_dimensional_bias = ospark.utility.weight_initializer.zeros(
                                 obj_name="high_dimensional_bias",
                                 shape=[self.scale_rate * self.embedding_size])
-        self._low_dimensional_bias  = ospark.weight.zeros(
+        self._low_dimensional_bias  = ospark.utility.weight_initializer.zeros(
                                 obj_name="low_dimensional_bias",
                                 shape=[self.embedding_size])
         self._norm = ospark.nn.layers.normalization.LayerNormalization(obj_name="layer_norm",

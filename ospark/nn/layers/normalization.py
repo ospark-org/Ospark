@@ -1,4 +1,6 @@
 import tensorflow as tf
+
+import ospark.utility.weight_initializer
 from . import Layer
 from typing import NoReturn, List, Optional, Callable, Union
 import ospark
@@ -46,9 +48,9 @@ class Normalization(Layer):
 
     def in_creating(self) -> NoReturn:
         if self.use_scale:
-            self._gamma = ospark.weight.ones(obj_name="gamma", shape=self._layer_dimension) * self._gamma
+            self._gamma = ospark.utility.weight_initializer.ones(obj_name="gamma", shape=self._layer_dimension) * self._gamma
         if self.use_bias:
-            self._beta = ospark.weight.ones(obj_name="beta", shape=self._layer_dimension) * self._beta
+            self._beta = ospark.utility.weight_initializer.ones(obj_name="beta", shape=self._layer_dimension) * self._beta
 
     def __init_subclass__(cls) -> NoReturn:
         super().__init_subclass__()
@@ -146,12 +148,12 @@ class BatchNormalization(Normalization):
 
     def in_creating(self) -> NoReturn:
         super().in_creating()
-        self.assign(component=ospark.weight.ones(obj_name="moving_mean",
-                                                 shape=[self.input_depth],
-                                                 trainable=False) * self._moving_mean)
-        self.assign(component=ospark.weight.ones(obj_name="moving_variance",
-                                                 shape=[self.input_depth],
-                                                 trainable=False) * self._moving_variance)
+        self.assign(component=ospark.utility.weight_initializer.ones(obj_name="moving_mean",
+                                                                     shape=[self.input_depth],
+                                                                     trainable=False) * self._moving_mean)
+        self.assign(component=ospark.utility.weight_initializer.ones(obj_name="moving_variance",
+                                                                     shape=[self.input_depth],
+                                                                     trainable=False) * self._moving_variance)
 
     def train_process(self, input_data: tf.Tensor) -> tf.Tensor:
         mean, variance  = tf.nn.moments(x=input_data, axes=[0, 1, 2])

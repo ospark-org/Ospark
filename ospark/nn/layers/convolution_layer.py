@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import ospark.utility.weight_initializer
 from ospark.nn.layers import Layer
 from ospark.nn.component.activation import Activation, ReLU, PassActivation
 from ospark.nn.layers.normalization import Normalization, BatchNormalization, PassNormalization
@@ -104,7 +106,7 @@ class ConvolutionLayer(Layer):
         return output
 
     def in_creating(self) -> NoReturn:
-        self._filter = ospark.weight.glorot_uniform(obj_name="filter", shape=self.filter_size)
+        self._filter = ospark.utility.weight_initializer.glorot_uniform(obj_name="filter", shape=self.filter_size)
         self._norm   = self.normalization
         # self.assign(component=ospark.weight.glorot_uniform(obj_name="filter", weight_shape=self.filter_size), name="filter")
         # self.assign(component=self.normalization, name="norm")
