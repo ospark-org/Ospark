@@ -177,6 +177,22 @@ class ClassifyModel(Model):
 ```python
 model = ClassifyModel("classify_model", 3, True)
 weights = model.get_weights()
+print("weights: ",weights.kesy())
+```
+
+## Result
+```bash
+Initialize weight classify_model/block_2/layer_2/weight.
+Initialize weight classify_model/block_2/layer_2/bias.
+Initialize weight classify_model/block_2/layer_1/weight.
+Initialize weight classify_model/block_2/layer_1/bias.
+Initialize weight classify_model/block_1/layer_2/weight.
+Initialize weight classify_model/block_1/layer_2/bias.
+Initialize weight classify_model/block_1/layer_1/weight.
+Initialize weight classify_model/block_1/layer_1/bias.
+Initialize weight classify_model/classify_layer/weight.
+Initialize weight classify_model/classify_layer/bias.
+weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/block_2/layer_2/bias', 'classify_model/block_2/layer_1/weight', 'classify_model/block_2/layer_1/bias', 'classify_model/block_1/layer_2/weight', 'classify_model/block_1/layer_2/bias', 'classify_model/block_1/layer_1/weight', 'classify_model/block_1/layer_1/bias', 'classify_model/classify_layer/weight', 'classify_model/classify_layer/bias'])
 ```
 
 ## Restore model:
