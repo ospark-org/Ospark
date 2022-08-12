@@ -1,10 +1,23 @@
 [tool.poetry]
 name = "ospark"
-version = "0.0.4.beta"
-description = "Building powerful model & Enjoy it!"
+version = "0.0.4"
+description = "Ospark is an opensource for quickly builder of former model series."
 authors = ["ospark-org <donggicai1991@gmail.com>"]
-keywords = ["transformer-series", "former-series", "former", "transformer"]
+keywords = ["text recognition", "NLP", "attention", "tensorflow", "transformer"]
 license = "Apache License 2.0"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research"
+]
+
 
 [tool.poetry.dependencies]
 python = ">=3.7, <3.10"
