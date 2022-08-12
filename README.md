@@ -35,6 +35,8 @@ weight = weight_initializer.normal(obj_name=weight_name,
 
 The initialization methods implemented in weight_initializer are as follows:
 
+Note: trainable default is True.
+
 - `truncated_normal(obj_name, shape, trainable)`
     
     **obj_name: str**
@@ -43,8 +45,7 @@ The initialization methods implemented in weight_initializer are as follows:
     
     **trainable: Optional[bool]**
     
-    **trainable default True**
-    
+
 - `normal(obj_name, shape, trainable)`
     
     **obj_name: str**
@@ -52,9 +53,8 @@ The initialization methods implemented in weight_initializer are as follows:
     **shape: List[int]**
     
     **trainable: Optional[bool]**
-    
-    **trainable default True**
-    
+   
+ 
 - `uniform(obj_name, shape, trainable)`
     
     **obj_name: str**
@@ -63,8 +63,7 @@ The initialization methods implemented in weight_initializer are as follows:
     
     **trainable: Optional[bool]**
     
-    **trainable default True**
-    
+
 - `ones(obj_name, shape, trainable)`
     
     **obj_name: str**
@@ -73,8 +72,7 @@ The initialization methods implemented in weight_initializer are as follows:
     
     **trainable: Optional[bool]**
     
-    **trainable default True**
-    
+
 - `zeros(obj_name, shape, trainable)`
     
     **obj_name: str**
@@ -83,8 +81,7 @@ The initialization methods implemented in weight_initializer are as follows:
     
     **trainable: Optional[bool]**
     
-    **trainable default True**
-    
+
 - `glorot_uniform(obj_name, shape, trainable)`
     
     **obj_name: str**
@@ -92,8 +89,6 @@ The initialization methods implemented in weight_initializer are as follows:
     **shape: List[int]**
     
     **trainable: Optional[bool]**
-    
-    **trainable default True**
     
 
 ## Build Layer
