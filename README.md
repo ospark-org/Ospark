@@ -201,6 +201,8 @@ class ClassifyModel(Model):
 model = ClassifyModel("classify_model", 3, True)
 weights = model.get_weights()
 print("weights: ", weights.keys())
+# saving trained weights to any folder:
+# ...
 ```
 ```bash
 weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/block_2/layer_2/bias', 'classify_model/block_2/layer_1/weight', 'classify_model/block_2/layer_1/bias', 'classify_model/block_1/layer_2/weight', 'classify_model/block_1/layer_2/bias', 'classify_model/block_1/layer_1/weight', 'classify_model/block_1/layer_1/bias', 'classify_model/classify_layer/weight', 'classify_model/classify_layer/bias'])
@@ -211,10 +213,10 @@ weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/bl
 ```python
 # Ospark supports default loader:
 from ospark.data.data_operator import JsonOperator as jo
-old_weights = jo.load(path="weight_path")
+old_weights = jo.load(path="weights_saved_path")
 
 # or you can load the file by your method:
-# old_weights = load_weights(path="weights_save_path")
+# old_weights = load_weights(path="weights_saved_path")
 
 model = ClassifyModel("classify_model", 3, True, trained_weights=old_weights)
 ```
