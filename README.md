@@ -110,7 +110,7 @@ from ospark.nn.block.resnet_block import Block1, Block2 # the Block1: [1X1, 3X3,
 from ospark.nn.block.transformer_block import transformer_decoder_block, transformer_encoder_block
 from ospark.nn.block.vgg_block import VGGBlock
 
-# if you need Dense block, makes it:
+# if you need Dense-block, makes it:
 class DenseBlock(Block):
 
     def __init__(self, 
@@ -128,7 +128,7 @@ class DenseBlock(Block):
         layer_output = self._layer_2.pipeline(layer_output)
         return layer_output
 
-# if you need to create likes Transformer encode/decode blocks, to extra import 2 modeules then doing something as below demo code:
+# if you need to create like Transformer encode/decode blocks, to extra import 2 modeules then doing something as below demo code:
 from ospark.nn.layers.self_attention import SelfAttentionLayer
 from ospark.nn.layers.feed_forward import FeedForwardLayer
 
