@@ -1,4 +1,4 @@
-Ospark currently based on Tensorflow 2.3+ and Python 3.7+ to easy and quick build/tune "former series models" that include Transformer, Informer, ExDeep Performance and FOTS-attention these powerful models by yourself, Osaprk wishes to support AI algorithm engineers, researchers and any deep learning learners to code and math balance. Now is v0.0.4 beta release.
+Ospark currently based on Tensorflow 2.3+ and Python 3.7+ to easy and quick build/tune "former series models" that include Transformer, Informer, ExDeep Performance and FOTS-attention these powerful modeld. Osaprk wishes to support AI algorithm engineers, researchers and any deep learning learners to code and math balance. Now is v0.0.4 beta release.
 
 ### Quick Install
 
