@@ -111,8 +111,7 @@ from ospark.nn.block.resnet_block import BuildingBlock, BottleneckBuildingBlock,
 from ospark.nn.block.transformer_block import transformer_decoder_block, transformer_encoder_block
 from ospark.nn.block.vgg_block import VGGBlock
 
-
-# if you need Dense block, makes it:
+# if you need Dense-block, makes it:
 class DenseBlock(Block):
 
   def __init__(self,
@@ -131,7 +130,7 @@ class DenseBlock(Block):
     return layer_output
 
 
-# if you need to create likes Transformer encode/decode blocks, to extra import 2 modeules then doing something as below demo code:
+# if you need to create like Transformer encode/decode blocks, to extra import 2 modeules then doing something as below demo code:
 from ospark.nn.layers.self_attention import SelfAttentionLayer
 from ospark.nn.layers.feed_forward import FeedForwardLayer
 
@@ -214,7 +213,7 @@ jo.save(folder_path="save_folder_path", model=model)
 # or you can load the file by your method:
 # save_weights(save_path="weights_save_path", weights=weights)
 
-print("weights: ", weights.kesy())
+print("weights: ", weights.keys())
 ```
 ```bash
 weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/block_2/layer_2/bias', 'classify_model/block_2/layer_1/weight', 'classify_model/block_2/layer_1/bias', 'classify_model/block_1/layer_2/weight', 'classify_model/block_1/layer_2/bias', 'classify_model/block_1/layer_1/weight', 'classify_model/block_1/layer_1/bias', 'classify_model/classify_layer/weight', 'classify_model/classify_layer/bias'])
@@ -225,10 +224,10 @@ weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/bl
 ```python
 # Ospark supports default loader:
 from ospark.data.data_operator import JsonOperator as jo
-old_weights = jo.load(path="weight_path")
+old_weights = jo.load(path="weights_saved_path")
 
 # or you can load the file by your method:
-# old_weights = load_weights(path="weights_save_path")
+# old_weights = load_weights(path="weights_saved_path")
 
 model = ClassifyModel("classify_model", 3, True, trained_weights=old_weights)
 ```
