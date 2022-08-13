@@ -64,7 +64,8 @@ class Weight:
         self._indexed_name = self._name_space._prefix.name + self.obj_name
         manager.add_weight(self)
         if self._value is None:
-            print(f"Initialize weight {self.indexed_name}.")
+            #TODO debug mode.
+            #print(f"Initialize weight {self.indexed_name}.")
             self._value = tf.Variable(self.init_weight() * self._scale, trainable=self.trainable)
 
     def restore(self, weight: tf.Tensor) -> NoReturn:
