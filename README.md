@@ -106,68 +106,72 @@ import tensorflow as tf
 from typing import Optional
 
 # the Ospark default support blocks are:
-from ospark.nn.block.resnet_block import Block1, Block2 # the Block1: [1X1, 3X3, 1X1], Block2: [3X3, 3X3]
+from ospark.nn.block.resnet_block import BuildingBlock, BottleneckBuildingBlock,
+# the BottleneckBuildingBlock: [1X1, 3X3, 1X1], BuildingBlock: [3X3, 3X3]
 from ospark.nn.block.transformer_block import transformer_decoder_block, transformer_encoder_block
 from ospark.nn.block.vgg_block import VGGBlock
 
-# if you need Dense-block, makes it:
+
+# if you need Dense block, makes it:
 class DenseBlock(Block):
 
-    def __init__(self, 
-                 obj_name: str,
-                 input_shape: int,
-                 output_shape: int,
-                 hidden_dimension: int,
-                 is_training: bool):
-        super().__init__(obj_name=obj_name, is_training=is_training)
-        self._layer_1 = FullyConnectedLayer("layer_1", [input_shape, hidden_dimension], is_training)
-        self._layer_2 = FullyConnectedLayer("layer_2", [hidden_dimension, output_shape], is_training)
+  def __init__(self,
+               obj_name: str,
+               input_shape: int,
+               output_shape: int,
+               hidden_dimension: int,
+               is_training: bool):
+    super().__init__(obj_name=obj_name, is_training=is_training)
+    self._layer_1 = FullyConnectedLayer("layer_1", [input_shape, hidden_dimension], is_training)
+    self._layer_2 = FullyConnectedLayer("layer_2", [hidden_dimension, output_shape], is_training)
 
-    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
-        layer_output = self._layer_1.pipeline(input_data)
-        layer_output = self._layer_2.pipeline(layer_output)
-        return layer_output
+  def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+    layer_output = self._layer_1.pipeline(input_data)
+    layer_output = self._layer_2.pipeline(layer_output)
+    return layer_output
+
 
 # if you need to create like Transformer encode/decode blocks, to extra import 2 modeules then doing something as below demo code:
 from ospark.nn.layers.self_attention import SelfAttentionLayer
 from ospark.nn.layers.feed_forward import FeedForwardLayer
 
+
 # demo code of Transformer Block
 class TransformerEncoderBlock(Block):
 
-    def __init__(self,
-                 obj_name: str,
-                 embedding_size: int,
-                 head_number: int,
-                 dropout_rate: float,
-                 scale_rate: int,
-                 is_training: bool):
-        super().__init__(obj_name=obj_name, is_training=is_training)
-        self._attention   = SelfAttentionLayer(obj_name="attention_layer", 
-                                               embedding_size=embedding_size,
-                                               head_number=head_number,
-                                               dropout_rate=dropout_rate,
-                                               is_training=is_training,
-                                               use_look_ahead=False)
-        self._feedforward = FeedForwardLayer(obj_name="attention_layer", 
-                                             embedding_size=embedding_size,
-                                             scale_rate=scale_rate,
-                                             dropout_rate=dropout_rate,
-                                             is_training=is_training)
-    
-    @property
-    def attention(self) -> SelfAttentionLayer:
-        return self._attention
+  def __init__(self,
+               obj_name: str,
+               embedding_size: int,
+               head_number: int,
+               dropout_rate: float,
+               scale_rate: int,
+               is_training: bool):
+    super().__init__(obj_name=obj_name, is_training=is_training)
+    self._attention = SelfAttentionLayer(obj_name="attention_layer",
+                                         embedding_size=embedding_size,
+                                         head_number=head_number,
+                                         dropout_rate=dropout_rate,
+                                         is_training=is_training,
+                                         use_look_ahead=False)
+    self._feedforward = FeedForwardLayer(obj_name="feedforward_layer",
+                                         embedding_size=embedding_size,
+                                         scale_rate=scale_rate,
+                                         dropout_rate=dropout_rate,
+                                         is_training=is_training)
 
-    @property
-    def feedforward(self) -> FeedForwardLayer:
-        return self._feedforward
-    
-    def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
-        output = self.attention.pipeline(input_data=input_data, mask=mask)
-        output = self.feedforward.pipeline(input_data=output)
-        return output
-	
+  @property
+  def attention(self) -> SelfAttentionLayer:
+    return self._attention
+
+  @property
+  def feedforward(self) -> FeedForwardLayer:
+    return self._feedforward
+
+  def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor] = None) -> tf.Tensor:
+    output = self.attention.pipeline(input_data=input_data, mask=mask)
+    output = self.feedforward.pipeline(input_data=output)
+    return output
+
 ```
 
 ### Build Model
@@ -198,11 +202,19 @@ class ClassifyModel(Model):
 ### Fetch Weights
 
 ```python
+# Ospark supports default saver:
+from ospark.data.data_operator import JsonOperator as jo
+
 model = ClassifyModel("classify_model", 3, True)
 weights = model.get_weights()
-print("weights: ", weights.keys())
+
 # saving trained weights to any folder:
-# ...
+jo.save(folder_path="save_folder_path", model=model)
+
+# or you can load the file by your method:
+# save_weights(save_path="weights_save_path", weights=weights)
+
+print("weights: ", weights.kesy())
 ```
 ```bash
 weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/block_2/layer_2/bias', 'classify_model/block_2/layer_1/weight', 'classify_model/block_2/layer_1/bias', 'classify_model/block_1/layer_2/weight', 'classify_model/block_1/layer_2/bias', 'classify_model/block_1/layer_1/weight', 'classify_model/block_1/layer_1/bias', 'classify_model/classify_layer/weight', 'classify_model/classify_layer/bias'])

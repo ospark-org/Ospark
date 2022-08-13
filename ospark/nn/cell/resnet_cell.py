@@ -1,6 +1,6 @@
 from __future__ import annotations
 from ospark.nn.cell import Cell
-from ospark.nn.block.resnet_block import ResnetBlock, Block1, Block2
+from ospark.nn.block.resnet_block import ResnetBlock, BottleneckBuildingBlock, BuildingBlock
 from typing import List, NoReturn
 import tensorflow as tf
 
@@ -31,9 +31,9 @@ class ResnetCell(Cell):
                    ) -> ResnetCell:
         blocks = []
         if block_type == "block_1":
-            block_cls = Block1
+            block_cls = BottleneckBuildingBlock
         elif block_type == "block_2":
-            block_cls = Block2
+            block_cls = BuildingBlock
         else:
             raise KeyError("block_type is only block_1 and block_2, please check block_type")
 

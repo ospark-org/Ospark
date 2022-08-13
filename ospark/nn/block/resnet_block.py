@@ -67,7 +67,7 @@ class ResnetBlock(Block):
         return shortcut
 
 
-class Block1(ResnetBlock):
+class BottleneckBuildingBlock(ResnetBlock):
 
     def in_creating(self) -> NoReturn:
         super().in_creating()
@@ -115,7 +115,7 @@ class Block1(ResnetBlock):
             output = layer.pipeline(output)
         return output + shortcut
 
-class Block2(ResnetBlock):
+class BuildingBlock(ResnetBlock):
 
     def in_creating(self) -> NoReturn:
         super().in_creating()
