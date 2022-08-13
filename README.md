@@ -111,8 +111,7 @@ from ospark.nn.block.resnet_block import BuildingBlock, BottleneckBuildingBlock,
 from ospark.nn.block.transformer_block import transformer_decoder_block, transformer_encoder_block
 from ospark.nn.block.vgg_block import VGGBlock
 
-
-# if you need Dense block, makes it:
+# if you need Dense-block, makes it:
 class DenseBlock(Block):
 
   def __init__(self,
@@ -214,7 +213,7 @@ jo.save(folder_path="save_folder_path", model=model)
 # or you can load the file by your method:
 # save_weights(save_path="weights_save_path", weights=weights)
 
-print("weights: ", weights.kesy())
+print("weights: ", weights.keys())
 ```
 ```bash
 weights:  dict_keys(['classify_model/block_2/layer_2/weight', 'classify_model/block_2/layer_2/bias', 'classify_model/block_2/layer_1/weight', 'classify_model/block_2/layer_1/bias', 'classify_model/block_1/layer_2/weight', 'classify_model/block_1/layer_2/bias', 'classify_model/block_1/layer_1/weight', 'classify_model/block_1/layer_1/bias', 'classify_model/classify_layer/weight', 'classify_model/classify_layer/bias'])
