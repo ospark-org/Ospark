@@ -1,7 +1,7 @@
 import ospark.utility.weight_initializer
 from . import Layer
 from typing import NoReturn, Optional
-from ospark.nn.component.activation import Activation
+from ospark.nn.layers.activation import Activation
 from ospark.nn.layers.normalization import Normalization, BatchNormalization
 import tensorflow as tf
 import ospark
@@ -14,7 +14,6 @@ class DistillingLayer(Layer):
                  embedding_size: int,
                  is_training: Optional[bool]=None,
                  filter_width: Optional[int]=None,
-                 pooling=None,
                  pooling_size: Optional[list]=None,
                  strides: Optional[list]=None,
                  activation: Optional[Activation]=None,
@@ -27,8 +26,8 @@ class DistillingLayer(Layer):
         self._norm           = norm or BatchNormalization(obj_name="batch_norm",
                                                           input_depth=embedding_size,
                                                           is_training=is_training)
-        self._activation     = activation or ospark.activation.ELU()
-        self._pooling        = pooling or tf.nn.max_pool1d
+        self._activation     = activation or ospark.nn.layers.activation.ELU()
+        self._pooling        = tf.nn.max_pool1d
 
     @property
     def embedding_size(self) -> int:

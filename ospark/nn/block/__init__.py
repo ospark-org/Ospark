@@ -7,9 +7,13 @@ import tensorflow as tf
 
 class Block(ModelObject):
 
-    def __init__(self, obj_name: str, is_training: Optional[bool]=None) -> NoReturn:
-        super().__init__(obj_name=obj_name, is_training=is_training)
-        self._layers = []
+    def __init__(self,
+                 obj_name: str,
+                 layers: Optional[List[ModelObject]]=None,
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None):
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
+        self._layers = layers or []
 
     @property
     def layers(self) -> List[Layer]:
@@ -17,8 +21,8 @@ class Block(ModelObject):
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         output = input_data
-        for layer in self.assigned:
-            output = layer(input_data=output)
+        for layer in self.layers:
+            output = layer.pipeline(input_data=output)
         return output
 
     def in_creating(self) -> NoReturn:

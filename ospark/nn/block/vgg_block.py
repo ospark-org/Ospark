@@ -2,7 +2,7 @@ from __future__ import annotations
 from ospark.nn.block import Block
 from ospark.nn.layers import Layer
 from ospark.nn.layers.normalization import Normalization, BatchNormalization
-from ospark.nn.component.activation import Activation, ReLU
+from ospark.nn.layers.activation import Activation, ReLU
 from ospark.nn.layers.convolution_layer import ConvolutionLayer
 from typing import List, NoReturn, Optional
 from functools import reduce

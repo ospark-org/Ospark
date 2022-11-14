@@ -1,9 +1,9 @@
 from ospark.nn.component.weight import WeightOperator
 from ospark.data.generator import DataGenerator
 from ospark.data.save_delege import SaveDelegate
-from typing import NoReturn, Optional, Callable, List, Tuple
+from typing import NoReturn, Optional, Callable, List, Tuple, Union, Dict
 from tensorflow.keras.optimizers import Optimizer
-from ospark.nn.loss_function import LossFunction
+from ospark.nn.loss_function.loss_function import LossFunction
 from ospark.nn.model import Model
 import tensorflow as tf
 import json
@@ -17,7 +17,7 @@ class Trainer:
                  data_generator: DataGenerator,
                  epoch_number: int,
                  optimizer: Optimizer,
-                 loss_function: LossFunction,
+                 loss_function: Union[LossFunction, Dict[str, LossFunction]],
                  save_delegate: Optional[SaveDelegate]=None,
                  save_times: Optional[int]=None,
                  save_path: Optional[str]=None,
@@ -96,12 +96,12 @@ class Trainer:
     def start(self):
         print("=" * 24)
         print("Training start.")
-        self.training_process(epoch_number=self.epoch_number)
+        self.training_process()
         print("Training end.")
         print("=" * 24)
 
-    def training_process(self, epoch_number) -> NoReturn:
-        for epoch in range(epoch_number):
+    def training_process(self) -> NoReturn:
+        for epoch in range(self.epoch_number):
             total_loss_value = 0
             training_count   = 0
             start_time       = time.time()
@@ -125,9 +125,7 @@ class Trainer:
             prediction = self.model.pipeline(input_data=train_data)
             loss_value = self.loss_function(prediction=prediction, target_data=target_data)
             weights    = self.weights_operator.collect_weights()
-            print("Watch weights.")
             tape.watch(weights)
-            print(weights)
         gradients = tape.gradient(loss_value, weights)
         self.optimizer.apply_gradients(zip(gradients, weights))
         return loss_value

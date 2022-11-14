@@ -8,7 +8,7 @@ import tensorflow as tf
 # TODO 如果這邊 input_data 內有 Weight 的話，會有問題，因為沒辦法用 Descriptor 去 get
 def dismantling_nest_structure(input_data: list, obj: ModelObject):
     for i, inside_obj in enumerate(input_data):
-        if isinstance(inside_obj, ModelObject) or isinstance(inside_obj, Weight):
+        if isinstance(inside_obj, (ModelObject, Weight)):
             obj.assign(inside_obj)
         elif isinstance(inside_obj, list):
             dismantling_nest_structure(input_data=inside_obj, obj=obj)
@@ -29,7 +29,7 @@ class Descriptor:
             return self._obj_package[identifier]
 
     def __set__(self, instance: ModelObject, value: Any) -> NoReturn:
-        if isinstance(value, ModelObject) or isinstance(value, Weight):
+        if isinstance(value, (ModelObject, Weight)):
             instance.assign(value)
             if isinstance(value, Weight) and value._is_default_setting:
                 value._trainable = instance.is_training
@@ -41,25 +41,18 @@ class Descriptor:
 
 class MetaObject(type):
 
-    cls = None
-
-    def __new__(mcls, *args, **kwargs):
-        cls = super().__new__(mcls, *args, **kwargs)
-        if mcls.cls is None:
-            mcls.cls = cls
-        return cls
-
-    def __call__(mcls, *args, **kwargs) -> ModelObject:
+    def __call__(cls, *args, **kwargs) -> ModelObject:
         obj = super().__call__(*args, **kwargs)
         obj.in_creating()
 
         keys = list(obj.__dict__.keys())
         for attr_name in keys:
             attr_value = obj.__dict__[attr_name]
-            if isinstance(attr_value, ModelObject) or isinstance(attr_value, Weight):
+            if isinstance(attr_value, (ModelObject, Weight)):
                 sub_obj = obj.__dict__.pop(attr_name)
-                setattr(mcls.cls, attr_name, Descriptor())
-                mcls.cls.__dict__[attr_name].__set__(obj, sub_obj)
+                if attr_name not in cls.__dict__:
+                    setattr(cls, attr_name, Descriptor())
+                setattr(obj, attr_name, sub_obj)
             elif isinstance(attr_value, list):
                 dismantling_nest_structure(input_data=attr_value, obj=obj)
         return obj
@@ -67,13 +60,11 @@ class MetaObject(type):
 
 class ModelObject(metaclass=MetaObject):
 
-    def __init__(self, obj_name: str, is_training: Optional[bool]=None):
-        self._obj_name    = obj_name
-        self._assigned    = Assigned()
-        if is_training is None:
-            self._is_training = True
-        else:
-            self._is_training = is_training
+    def __init__(self, obj_name: str, is_training: Optional[bool]=None, training_phase: Optional[bool]=None):
+        self._obj_name       = obj_name
+        self._assigned       = Assigned()
+        self._training_phase = training_phase if training_phase is not None else True
+        self._is_training    = is_training if is_training is not None else True
 
     @property
     def obj_name(self) -> str:
@@ -86,6 +77,17 @@ class ModelObject(metaclass=MetaObject):
     @property
     def is_training(self) -> bool:
         return self._is_training
+
+    @property
+    def training_phase(self) -> bool:
+        return self._training_phase
+
+    @training_phase.setter
+    def training_phase(self, value: bool) -> None:
+        self._training_phase = value
+        for assigned in self.assigned:
+            if isinstance(assigned, ModelObject):
+                assigned.training_phase = value
 
     def in_creating(self) -> NoReturn:
         pass

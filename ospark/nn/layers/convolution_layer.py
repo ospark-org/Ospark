@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ospark.utility.weight_initializer
 from ospark.nn.layers import Layer
-from ospark.nn.component.activation import Activation, ReLU, PassActivation
+from ospark.nn.layers.activation import Activation, ReLU, PassActivation
 from ospark.nn.layers.normalization import Normalization, BatchNormalization, PassNormalization
 from typing import List, NoReturn, Optional
 import tensorflow as tf

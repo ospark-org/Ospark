@@ -2,13 +2,11 @@ from ospark.nn.optimizer.learning_rate_schedule import TransformerWarmup
 from ospark.models.builder import FormerBuilder
 from ospark.data.generator.translate_data_generator import TranslateDataGenerator
 from ospark.trainer.exdeep_transformer import ExdeepTransformerTrainer
-from ospark.trainer.transformer_trainer import TransformerTrainer
-from ospark.nn.loss_function import SparseCategoricalCrossEntropy
+from ospark.nn.loss_function.sparse_categorical_cross_entropy import SparseCategoricalCrossEntropy
 from ospark.data.encoder import LanguageDataEncoder
 from typing import Optional
 import tensorflow_datasets as tfds
 import tensorflow_addons as tfa
-import tensorflow as tf
 import json
 import os
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0"

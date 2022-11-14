@@ -1,9 +1,9 @@
-import ospark.utility.weight_initializer
-from . import Layer
 from ospark.nn.layers.normalization import Normalization
-from ospark.nn.component.activation import Activation
+from ospark.nn.layers.activation import Activation
 from typing import NoReturn, Optional
-import tensorflow as tf 
+from . import Layer
+import ospark.utility.weight_initializer
+import tensorflow as tf
 import ospark
 
 
@@ -14,10 +14,11 @@ class FeedForwardLayer(Layer):
                  embedding_size: int, 
                  scale_rate: int,
                  dropout_rate: float,
+                 training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
                  activation: Optional[Activation]=None) -> NoReturn:
-        super().__init__(obj_name=obj_name, is_training=is_training)
-        self._activation     = activation or ospark.activation.ReLU()
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
+        self._activation     = activation or ospark.nn.layers.activation.ReLU()
         self._embedding_size = embedding_size
         self._scale_rate     = scale_rate
         self._dropout_layer  = tf.keras.layers.Dropout(rate=dropout_rate)
@@ -51,13 +52,14 @@ class FeedForwardLayer(Layer):
         self._low_dimensional_bias  = ospark.utility.weight_initializer.zeros(
                                 obj_name="low_dimensional_bias",
                                 shape=[self.embedding_size])
+
         self._norm = ospark.nn.layers.normalization.LayerNormalization(obj_name="layer_norm",
                                                                        layer_dimension=self.embedding_size)
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         main_output          = self.feedforward(input_data)
         residual_output      = self.residual_net(input_data)
-        added_residual       = tf.add(self.dropout_layer(main_output, training=self.is_training), residual_output)
+        added_residual       = tf.add(self.dropout_layer(main_output, training=self.training_phase), residual_output)
         normalization_output = self._norm(added_residual)
         return normalization_output
 

@@ -11,13 +11,14 @@ class Normalization(Layer):
     def __init__(self,
                  obj_name: str,
                  layer_dimension: Union[int, list],
+                 training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
                  gamma: Optional[float]=None,
                  beta: Optional[float]=None,
                  epsilon: Optional[float]=None,
                  use_bias: Optional[bool]=None,
                  use_scale: Optional[bool]=None):
-        super().__init__(obj_name=obj_name, is_training=is_training)
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         self._layer_dimension = layer_dimension
 
         self._gamma     = gamma or 1.0
@@ -56,11 +57,11 @@ class Normalization(Layer):
         super().__init_subclass__()
         setattr(Normalization, cls.__name__, cls)
 
-    def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         raise NotImplementedError()
 
     def __call__(self, input_data: tf.Tensor) -> tf.Tensor:
-        return self.calculate(input_data)
+        return self.pipeline(input_data)
 
 
 class PassNormalization(Normalization):
@@ -73,7 +74,7 @@ class PassNormalization(Normalization):
     def in_creating(self) -> NoReturn:
         pass
 
-    def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         return input_data
 
 
@@ -97,7 +98,7 @@ class LayerNormalization(Normalization):
                          use_bias=use_bias,
                          use_scale=use_scale)
 
-    def calculate(self, input_data: tf.Tensor, axis: int=-1) -> tf.Tensor:
+    def pipeline(self, input_data: tf.Tensor, axis: int=-1) -> tf.Tensor:
         mean, variance = tf.nn.moments(input_data, axes=[axis], keepdims=True)
         normalization_outputs = (input_data - mean) / (tf.sqrt(variance) + self.epsilon)
         if self.use_scale:
@@ -111,6 +112,7 @@ class BatchNormalization(Normalization):
 
     def __init__(self,
                  input_depth: Union[tf.Tensor, int],
+                 training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
                  obj_name: str=None,
                  gamma: Optional[float]=None,
@@ -128,12 +130,12 @@ class BatchNormalization(Normalization):
                                                  beta=beta,
                                                  epsilon=epsilon,
                                                  use_scale=use_scale,
-                                                 use_bias=use_bias)
+                                                 use_bias=use_bias,
+                                                 training_phase=training_phase)
         self._input_depth     = input_depth
         self._momentum        = momentum or 0.9
         self._moving_mean     = moving_mean or 0.0
         self._moving_variance = moving_variance or 1.0
-        self._calculate       = self.train_process if is_training else self.inference_process
 
     @property
     def input_depth(self) -> Union[tf.Tensor, int]:
@@ -143,8 +145,11 @@ class BatchNormalization(Normalization):
     def momentum(self) -> tf.Tensor:
         return tf.constant(self._momentum)
 
-    def calculate(self, input_data: tf.Tensor) -> tf.Tensor:
-        return self._calculate(input_data)
+    def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
+        if self.training_phase:
+            return self.train_process(input_data=input_data)
+        else:
+            return self.inference_process(input_data=input_data)
 
     def in_creating(self) -> NoReturn:
         super().in_creating()

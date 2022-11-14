@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ospark.nn.cell import Cell
 from ospark.nn.block.resnet_block import ResnetBlock, BottleneckBuildingBlock, BuildingBlock
-from typing import List, NoReturn
+from typing import List, NoReturn, Optional
 import tensorflow as tf
 
 
@@ -10,8 +10,9 @@ class ResnetCell(Cell):
     def __init__(self,
                  obj_name: str,
                  blocks: List[ResnetBlock],
-                 is_training: bool):
-        super().__init__(obj_name=obj_name, is_training=is_training)
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None):
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         self._blocks    = blocks
 
     @property

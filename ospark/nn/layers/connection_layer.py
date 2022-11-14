@@ -56,8 +56,6 @@ class ConnectionLayer(Layer):
     def in_creating(self) -> NoReturn:
         self._convolution_1 = self.conv_1
         self._convolution_2 = self.conv_2
-        # self.assign(component=self.conv_1)
-        # self.assign(component=self.conv_2)
 
     def pipeline(self, input_data: tf.Tensor, connection_input: tf.Tensor) -> tf.Tensor:
         shape          = tf.shape(connection_input)

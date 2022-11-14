@@ -124,6 +124,17 @@ class WeightOperator:
             else:
                 return partition_weights_name
 
+    def get_weights(self, partition_name: Optional[str]) -> dict:
+        if partition_name is None:
+            return self.weights
+        else:
+            partition_weights_name = [weight.indexed_name for weight in self._weights if partition_name in weight.indexed_name]
+            if partition_weights_name == []:
+                raise NameError(f"partition name {partition_name} is not exist, please check")
+            else:
+                return partition_weights_name
+
+
     @property
     def weights(self) -> dict:
         return {weight.indexed_name: weight.value.numpy().tolist() for weight in self._weights}

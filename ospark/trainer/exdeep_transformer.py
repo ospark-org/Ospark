@@ -1,5 +1,5 @@
 from ospark.trainer import *
-from ospark.nn.loss_function import LossFunction
+from ospark.nn.loss_function.loss_function import LossFunction
 from ospark import Model
 import tensorflow as tf
 import time

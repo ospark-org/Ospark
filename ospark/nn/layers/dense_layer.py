@@ -1,7 +1,7 @@
 import ospark.utility.weight_initializer
 from ospark.nn.layers import Layer
 from typing import List, NoReturn, Optional, Callable, Tuple, Union
-from ospark.nn.component.activation import Activation, PassActivation
+from ospark.nn.layers.activation import Activation, PassActivation
 from functools import reduce
 from ospark import Weight
 import tensorflow as tf
@@ -11,7 +11,7 @@ import ospark
 class DenseLayer(Layer):
 
     def __init__(self,
-                 obj_name:str,
+                 obj_name: str,
                  input_dimension: int,
                  hidden_dimension: List[int],
                  is_training: Optional[bool]=None,
@@ -38,10 +38,6 @@ class DenseLayer(Layer):
         return self._layers_name
 
     @property
-    def activation(self) -> Callable[[tf.Tensor], tf.Tensor]:
-        return self._activation
-
-    @property
     def use_bias(self) -> bool:
         return self._use_bias
 
@@ -62,10 +58,10 @@ class DenseLayer(Layer):
                 setattr(self, name + "_bias", ospark.utility.weight_initializer.zeros(obj_name=name + "_bias", shape=[output_dimension]))
 
     def bias_forward(self, input_data: tf.Tensor, weight: Tuple[Weight, Weight]) -> tf.Tensor:
-        return self.activation(tf.matmul(input_data, weight[0]) + weight[1])
+        return self._activation(tf.matmul(input_data, weight[0]) + weight[1])
 
     def no_bias_forward(self, input_data: tf.Tensor, weight: tf.Tensor) -> tf.Tensor:
-        return self.activation(tf.matmul(input_data, weight))
+        return self._activation(tf.matmul(input_data, weight))
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         layers = [(getattr(self, name), getattr(self, name + "_bias"))

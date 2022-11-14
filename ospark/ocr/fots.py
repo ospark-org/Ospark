@@ -3,7 +3,10 @@ from ospark.nn.model import Model
 from ospark.utility.roi_rotate import RoIRotate
 from typing import List, Tuple, Optional, Union, Any
 from ospark.models.pixel_wise import fots_detection_model, PixelWiseDetection
-from ospark.nn.loss_function import Dice, Degree, IoU, LossFunction
+from ospark.nn.loss_function.loss_function import LossFunction
+from ospark.nn.loss_function.degree_loss import Degree
+from ospark.nn.loss_function.iou_loss import IoU
+from ospark.nn.loss_function.dice_loss import Dice
 from ospark.models.text_recognition import TextRecognition, fots_recognition_model
 import tensorflow as tf
 import numpy as np

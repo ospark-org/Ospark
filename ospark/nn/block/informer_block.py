@@ -4,7 +4,7 @@ from ospark.nn.layers.self_attention import SelfAttentionLayer, EncoderDecoderAt
 from ospark.nn.layers.prob_sparse import ProbSparseAttentionLayer
 from ospark.nn.layers.distilling_layer import DistillingLayer
 from ospark.nn.layers.feed_forward import FeedForwardLayer
-from ospark.nn.component.activation import GELU
+from ospark.nn.layers.activation import GELU
 from . import Block
 import tensorflow as tf
 

@@ -15,9 +15,10 @@ class SelfAttentionLayer(Layer):
                  embedding_size: int, 
                  head_number: int,
                  dropout_rate: float,
+                 training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
-                 use_look_ahead: Optional[bool]=False) -> NoReturn:
-        super().__init__(obj_name=obj_name, is_training=is_training)
+                 use_look_ahead: Optional[bool]=None) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         assert embedding_size % head_number == 0
 
         self._depth           = embedding_size // head_number
@@ -25,7 +26,7 @@ class SelfAttentionLayer(Layer):
         self._head_number     = head_number
         self._sequence_length = None
         self._dropout_layer   = tf.keras.layers.Dropout(rate=dropout_rate)
-        self._use_look_ahead  = use_look_ahead
+        self._use_look_ahead  = use_look_ahead or False
 
     @property
     def depth(self) -> int:
@@ -91,7 +92,7 @@ class SelfAttentionLayer(Layer):
         self._norm = ospark.nn.layers.normalization.LayerNormalization(obj_name="layer_norm",
                                                                        layer_dimension=self.embedding_size)
 
-    def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None):
+    def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None, *args, **kwargs):
         return self.layer_calculation(Q_input=input_data,
                                       K_input=input_data,
                                       V_input=input_data,
@@ -108,7 +109,7 @@ class SelfAttentionLayer(Layer):
         main_output = self.attention_layer(Q=Q, K=K, V=V, batch_size=batch_size, mask=mask)
 
         residual_output = self.residual_net(input_data=Q_input)
-        added_residual  = tf.add(self.dropout_layer(main_output, training=self.is_training), residual_output)
+        added_residual  = tf.add(self.dropout_layer(main_output, training=self.training_phase), residual_output)
         layer_output    = self._norm(added_residual)
         return layer_output
 
@@ -150,7 +151,10 @@ class SelfAttentionLayer(Layer):
         scaled_dot_product = tf.matmul(Q, K) / tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))  # BHLD * BHDL -> BHLL
         if self.use_look_ahead and mask is not None:
             self._sequence_length = tf.shape(Q)[-2]
-            scaled_dot_product += (tf.cast(tf.math.not_equal(mask + self.look_ahead_mask, 0), tf.float32) * -1e9)
+
+            mask = (tf.cast(tf.math.not_equal(mask + self.look_ahead_mask, 0), tf.float32) * -1e9)[:, tf.newaxis, ...]
+
+            scaled_dot_product += mask
         elif mask is not None:
             scaled_dot_product += (mask * -1e9)
         scaled_dot_product = tf.nn.softmax(scaled_dot_product, axis=-1)
@@ -170,8 +174,8 @@ class EncoderDecoderAttentionLayer(SelfAttentionLayer):
                  embedding_size: int, 
                  head_number: int,
                  dropout_rate: float,
-                 is_training: Optional[bool]=False,
-                 use_look_ahead: Optional[bool]=False) -> NoReturn:
+                 is_training: Optional[bool]=None,
+                 use_look_ahead: Optional[bool]=None) -> NoReturn:
         super().__init__(obj_name=obj_name, 
                          embedding_size=embedding_size, 
                          head_number=head_number,

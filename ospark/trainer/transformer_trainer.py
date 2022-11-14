@@ -1,6 +1,6 @@
 from ospark.trainer import *
 from ospark.models.transformer import Transformer
-from ospark.nn.loss_function import LossFunction
+from ospark.nn.loss_function.loss_function import LossFunction
 import tensorflow as tf
 import time
 
@@ -30,10 +30,10 @@ class TransformerTrainer(Trainer):
                          save_path=save_path,
                          save_times=save_times,
                          use_auto_graph=use_auto_graph)
-        self._use_profiling_phase         = use_profiling_phase
-        self._save_init_weights           = save_init_weights
-        self._init_weights_path           = init_weights_path or self.save_path.split(".")[0] + "_init.json"
-        self._log_file                    = open(self.save_path.split(".")[0] + ".txt", 'w')
+        self._use_profiling_phase = use_profiling_phase
+        self._save_init_weights   = save_init_weights
+        self._init_weights_path   = init_weights_path or self.save_path.split(".")[0] + "_init.json"
+        self._log_file            = open(self.save_path.split(".")[0] + ".txt", 'w')
 
     @property
     def use_profiling_phase(self) -> bool:
@@ -68,7 +68,7 @@ class TransformerTrainer(Trainer):
         print("Training end.")
         print("=" * 24)
 
-    def training_process(self, epoch_number) -> NoReturn:
+    def training_process(self, epoch_number: int) -> NoReturn:
         for epoch in range(epoch_number):
             total_loss_value = 0
             training_count   = 0

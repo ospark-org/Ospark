@@ -13,6 +13,7 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
                  head_number: int,
                  sample_factor: float,
                  dropout_rate: float,
+                 training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
                  use_look_ahead: Optional[bool]=False) -> NoReturn:
         super().__init__(obj_name=obj_name,
@@ -20,7 +21,8 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
                          head_number=head_number,
                          dropout_rate=dropout_rate,
                          is_training=is_training,
-                         use_look_ahead=use_look_ahead)
+                         use_look_ahead=use_look_ahead,
+                         training_phase=training_phase)
         self._sample_factor = sample_factor
         self._top_u         = None
 
