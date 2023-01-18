@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ospark"
-version = "0.1.2"
+version = "0.1.3"
 description = "Ospark is an opensource for quickly builder of former model series."
 authors = ["ospark-org <donggicai1991@gmail.com>"]
 keywords = ["text recognition", "NLP", "attention", "tensorflow", "transformer"]
