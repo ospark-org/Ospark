@@ -21,6 +21,7 @@ class FeedForwardLayer(Layer):
         self._activation     = activation or ospark.nn.layers.activation.ReLU()
         self._embedding_size = embedding_size
         self._scale_rate     = scale_rate
+        self._dropout_rate   = dropout_rate
         self._dropout_layer  = tf.keras.layers.Dropout(rate=dropout_rate)
 
     @property

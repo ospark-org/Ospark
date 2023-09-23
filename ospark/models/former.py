@@ -3,6 +3,7 @@ from ospark.nn.layers.embedding_layer import EmbeddingLayer
 from ospark.nn.block import Block
 from ospark.nn.component.weight import Weight
 from typing import List, Tuple, Optional, Callable, Union
+from ospark.nn.layers.dense_layer import DenseLayer
 from ospark import Model
 import ospark
 import numpy as np
@@ -24,40 +25,43 @@ class Former(Model):
                  decoder_corpus_size: Optional[int]=None,
                  use_embedding_layer: Optional[bool]=True,
                  use_classifier: Optional[bool]=False,
+                 use_classify_layer: Optional[bool]=None,
+                 training_phase: Optional[bool]=None,
                  max_length: int=2000
                  ):
-        super().__init__(obj_name=obj_name, trained_weights=trained_weights, is_training=is_training)
-        self._embedding_size       = embedding_size
-        self._max_length           = max_length
-        self._encoder_blocks       = encoder_blocks
-        self._decoder_blocks       = decoder_blocks or []
-        self._class_number         = class_number
-        self._embedding_layer      = None
-        self._embedding_scale_rate = tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
-        self._encoder_dropout_layer= tf.keras.layers.Dropout(rate=dropout_rate)
-        self._classify_layer       = ospark.utility.weight_initializer.glorot_uniform(obj_name="classify_layer",
-                                                                                      shape=[self.embedding_size, class_number])
-        self._classify_layer_bias  = ospark.utility.weight_initializer.zeros(obj_name="classify_layer_bias",
-                                                                             shape=[class_number])
-        self._classifier           = tf.nn.sigmoid if class_number == 2 else tf.nn.softmax
-        self._use_classifier       = use_classifier
+        super().__init__(obj_name=obj_name, trained_weights=trained_weights, is_training=is_training, training_phase=training_phase)
+        self._embedding_size        = embedding_size
+        self._max_length            = max_length
+        self._encoder_blocks        = encoder_blocks
+        self._decoder_blocks        = decoder_blocks or []
+        self._class_number          = class_number
+        self._embedding_layer       = None
+        self._embedding_scale_rate  = tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
+        self._dropout_rate          = dropout_rate
+        self._classifier            = tf.nn.sigmoid if class_number == 2 else tf.nn.softmax
+        self._encoder_dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
+        self._decoder_dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
+        self._use_classifier        = use_classifier
+        self._use_classify_layer    = use_classify_layer if use_classify_layer is not None else False
 
         self._positional_encoding_table = self.create_positional_encoding_table()
 
-        for component in [*self.encoder_blocks, self.classify_layer, self.classify_layer_bias]:
-            self.assign(component)
+        self._encoder_corpus_size = encoder_corpus_size
+        self._decoder_corpus_size = decoder_corpus_size
+        self._use_embedding_layer = use_embedding_layer
 
-        if decoder_blocks is not None:
-            self._decoder_dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
-            for component in decoder_blocks:
-                self.assign(component)
+        if self._use_classify_layer:
+            self._classify_layer = DenseLayer(obj_name="classify_layer",
+                                              input_dimension=embedding_size,
+                                              hidden_dimension=[class_number],
+                                              is_training=is_training)
 
-        if use_embedding_layer:
+        if self._use_embedding_layer:
             if encoder_corpus_size is None:
                 raise KeyError("Use embedding layers, must setting encoder_corpus_size")
             self._encoder_embedding_layer = EmbeddingLayer(obj_name="encoder_embedding_layer",
                                                            embedding_dimension=embedding_size,
-                                                           corpus_size=encoder_corpus_size)
+                                                           corpus_size=self._encoder_corpus_size)
             self.assign(self.encoder_embedding_layer)
 
             if decoder_blocks is not None:
@@ -65,14 +69,14 @@ class Former(Model):
                     raise KeyError("Use embedding layers, must setting decoder_corpus_size")
                 self._decoder_embedding_layer = EmbeddingLayer(obj_name="decoder_embedding_layer",
                                                                embedding_dimension=embedding_size,
-                                                               corpus_size=decoder_corpus_size)
-                self.assign(self.decoder_embedding_layer)
+                                                               corpus_size=self._decoder_corpus_size)
 
             self._create_mask_matrix = self.create_mask_by_onehot
 
         else:
-            self._decoder_embedding_layer = lambda input_data: input_data
-            self._encoder_embedding_layer = lambda input_data: input_data
+            pass_embedding_layer          = type("PassEmbeddingLayer", (), {"pipeline": lambda self, input_data: input_data})()
+            self._decoder_embedding_layer = pass_embedding_layer
+            self._encoder_embedding_layer = pass_embedding_layer
             self._create_mask_matrix      = self.create_mask_by_embedding
 
     @property

@@ -30,7 +30,7 @@ class VGGBlock(Block):
         return self._pooling_size
 
     @property
-    def pooling_sreides(self) -> List[int]:
+    def pooling_strides(self) -> List[int]:
         return self._pooling_strides
 
     @classmethod
@@ -74,7 +74,7 @@ class VGGBlock(Block):
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         layer_output = reduce(lambda output, layer: layer.pipeline(output), self.layers, input_data)
         block_output = tf.nn.max_pool2d(input=layer_output,
-                                        strides=self.pooling_sreides,
+                                        strides=self.pooling_strides,
                                         ksize=self.pooling_size,
                                         padding="SAME")
         return block_output

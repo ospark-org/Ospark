@@ -14,10 +14,12 @@ class Transformer(Former):
                  dropout_rate: float,
                  trained_weights: Optional[dict]=None,
                  is_training: Optional[bool]=False,
+                 training_phase:  Optional[bool]=None,
                  encoder_corpus_size: Optional[int]=None,
                  decoder_corpus_size: Optional[int]=None,
                  use_embedding_layer: Optional[bool]=True,
                  use_classifier: Optional[bool]=False,
+                 use_classify_layer: Optional[bool]=None,
                  decoder_blocks: Optional[List[TransformerDecoderBlock]]=None,
                  max_length: Optional[int]=2000,
                  ) -> NoReturn:
@@ -33,8 +35,9 @@ class Transformer(Former):
                          decoder_blocks=decoder_blocks,
                          max_length=max_length,
                          dropout_rate=dropout_rate,
-                         is_training=is_training
-                         )
+                         is_training=is_training,
+                         training_phase=training_phase,
+                         use_classify_layer=use_classify_layer)
 
     def pipeline(self, encoder_input: tf.Tensor, decoder_input: Optional[tf.Tensor]=None) -> tf.Tensor:
         encoder_padding_mask, lookahead_mask = self.create_mask_matrix(encoder_input, decoder_input)

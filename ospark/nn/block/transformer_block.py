@@ -13,8 +13,10 @@ class TransformerEncoderBlock(Block):
     def __init__(self,
                  obj_name: str,
                  attention: SelfAttentionLayer,
-                 feedforward: FeedForwardLayer) -> NoReturn:
-        super().__init__(obj_name=obj_name)
+                 feedforward: FeedForwardLayer,
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         self._attention   = attention
         self._feedforward = feedforward
     
@@ -64,8 +66,10 @@ class TransformerDecoderBlock(Block):
                  obj_name: str,
                  attention: SelfAttentionLayer,
                  encode_decode_attention: EncoderDecoderAttentionLayer,
-                 feedforward: FeedForwardLayer) -> NoReturn:
-        super().__init__(obj_name)
+                 feedforward: FeedForwardLayer,
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         self._attention               = attention
         self._encode_decode_attention = encode_decode_attention
         self._feedforward             = feedforward
@@ -147,7 +151,8 @@ def transformer_encoder_block(obj_name: str,
                                    is_training=is_training)
     block = TransformerEncoderBlock(obj_name=obj_name, 
                                     attention=attention, 
-                                    feedforward=feedforward)
+                                    feedforward=feedforward,
+                                    is_training=is_training)
     return block
 
 def transformer_decoder_block(obj_name: str,

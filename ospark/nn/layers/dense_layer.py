@@ -53,9 +53,13 @@ class DenseLayer(Layer):
                 input_dimension = self.hidden_dimension[i - 1]
             name = f"layer_{i}"
             self._layers_name.append(name)
-            setattr(self, name, ospark.utility.weight_initializer.glorot_uniform(obj_name=name, shape=[input_dimension, output_dimension]))
+            setattr(self, name, ospark.utility.weight_initializer.glorot_uniform(obj_name=name,
+                                                                                 shape=[input_dimension, output_dimension],
+                                                                                 trainable=self.is_training))
             if self.use_bias:
-                setattr(self, name + "_bias", ospark.utility.weight_initializer.zeros(obj_name=name + "_bias", shape=[output_dimension]))
+                setattr(self, name + "_bias", ospark.utility.weight_initializer.zeros(obj_name=name + "_bias",
+                                                                                      shape=[output_dimension],
+                                                                                      trainable=self.is_training))
 
     def bias_forward(self, input_data: tf.Tensor, weight: Tuple[Weight, Weight]) -> tf.Tensor:
         return self._activation(tf.matmul(input_data, weight[0]) + weight[1])

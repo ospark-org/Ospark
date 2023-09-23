@@ -2,11 +2,34 @@ from ospark.models.former import Former
 from ospark.nn.block import Block
 from typing import List, NoReturn, Optional
 import tensorflow as tf
+import numpy as np
 
 class PositionalEncodingDelegate:
 
     def __init__(self):
         pass
+
+class TimePositionalEncoding(PositionalEncodingDelegate):
+
+    def __init__(self):
+        self._year_positional_embedding  = self.create_positional_embedding(period_length=3000)
+        self._month_positional_embedding = self.create_positional_embedding(period_length=13)
+        self._day_positional_embedding   = self.create_positional_embedding(period_length=32)
+
+    def create_positional_embedding(self, period_length: int) -> tf.Tensor:
+        basic_table = np.zeros(shape=[period_length, self._embedding_size])
+        position    = np.arange(period_length).reshape([-1, 1])
+        denominator = np.power(10000, np.arange(0, self._embedding_size, 2) / self._embedding_size)
+        basic_table[:, 0::2] = np.sin(position / denominator)
+        basic_table[:, 1::2] = np.cos(position / denominator)
+        return tf.convert_to_tensor(basic_table, dtype=tf.float32)[tf.newaxis, :, :]
+
+    def positional_encoding(self, year: int, month: int, day: int) -> tf.Tensor:
+        year_position  = self._year_positional_embedding[:, year: year+1, ...]
+        month_position = self._month_positional_embedding[:, month: month+1, ...]
+        day_position   = self._day_positional_embedding[:, day: day+1, ...]
+        return year_position + month_position + day_position
+
 
 class Informer(Former):
 
@@ -17,6 +40,7 @@ class Informer(Former):
                  embedding_size: int,
                  dropout_rate: float,
                  positional_encoding_delegate: PositionalEncodingDelegate,
+                 use_classify_layer: Optional[bool]=None,
                  trained_weights: Optional[dict]=None,
                  is_training: Optional[bool]=None,
                  decoder_blocks: Optional[List[Block]]=None,
@@ -30,8 +54,13 @@ class Informer(Former):
                          decoder_blocks=decoder_blocks,
                          max_length=max_length,
                          dropout_rate=dropout_rate,
-                         is_training=is_training)
+                         is_training=is_training,
+                         use_classify_layer=use_classify_layer)
         self._positional_encoding = positional_encoding_delegate or PositionalEncodingDelegate()
+
+    @property
+    def positional_encoding(self):
+        return self._positional_encoding
 
     def pipeline(self, encoder_input: tf.Tensor, decoder_input: tf.Tensor=None) -> tf.Tensor:
         encoder_padding_mask, encoder_encoding_mask, prediction_mask = self.create_mask_matrix(encoder_input=encoder_input)

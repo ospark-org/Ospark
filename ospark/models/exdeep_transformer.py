@@ -16,6 +16,7 @@ class ExdeepTransformer(Transformer):
                  decoder_corpus_size: Optional[int]=None,
                  use_embedding_layer: Optional[bool]=True,
                  use_classifier: Optional[bool]=False,
+                 use_classify_layer: Optional[bool]=None,
                  decoder_blocks: Optional[List[DeepTransformerDecoder]]=None,
                  max_length: int=2000,
                  ) -> NoReturn:
@@ -31,8 +32,8 @@ class ExdeepTransformer(Transformer):
                          decoder_blocks=decoder_blocks,
                          max_length=max_length,
                          dropout_rate=dropout_rate,
-                         is_training=is_training
-                         )
+                         is_training=is_training,
+                         use_classify_layer=use_classify_layer)
 
     @property
     def encoder_blocks(self) -> List[DeepTransformerEncoder]:

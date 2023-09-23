@@ -31,7 +31,7 @@ class FOTSTrainer(Trainer):
                  recognition_loss_coefficient: Optional[float]=None,
                  save_delegate: Optional[SaveDelegate]=None,
                  save_times: Optional[int]=None,
-                 save_path: Optional[str]=None,
+                 save_weights_path: Optional[str]=None,
                  use_graph: Optional[bool]=True):
         super().__init__(model=detection_model,
                          data_generator=data_generator,
@@ -40,7 +40,7 @@ class FOTSTrainer(Trainer):
                          loss_function=None,
                          save_delegate=save_delegate,
                          save_times=save_times,
-                         save_path=save_path,
+                         save_weights_path=save_weights_path,
                          use_auto_graph=use_graph,
                          use_multi_gpu=False,
                          devices=None)
@@ -142,7 +142,7 @@ class FOTSTrainer(Trainer):
                    optimizer=optimizer,
                    reg_optimizer=reg_optimizer,
                    corpus=corpus,
-                   save_path=save_path,
+                   save_weights_path=save_path,
                    save_times=save_times)
 
     def start(self) -> NoReturn:
@@ -178,8 +178,8 @@ class FOTSTrainer(Trainer):
             print("spent time per epoch: ", time.time() - start)
 
             if self.will_save(epoch_number=i):
-                self.save_delegate.save(weights=self.weights_operator.weights)
-        self.save_delegate.save(weights=self.weights_operator.weights)
+                self.save_delegate.save(save_obj=self.weights_operator.weights)
+        self.save_delegate.save(save_obj=self.weights_operator.weights)
 
     @tf.function(input_signature=[
         tf.TensorSpec(shape=[None, None, None, None], dtype=tf.float32),

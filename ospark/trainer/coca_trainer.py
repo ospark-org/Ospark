@@ -3,11 +3,12 @@ from . import *
 
 class CocaTrainer(Trainer):
 
-    def train_step(self, train_data: tf.Tensor, target_data: tf.Tensor):
+    def train_step(self, train_data: Dict[str, tf.Tensor], target_data: tf.Tensor):
 
         with tf.GradientTape() as tape:
-            logits, cls_image_embedding, cls_embedding = self.model.pipeline(images=train_data.images,
-                                                                             text=train_data.text)
+
+            logits, cls_image_embedding, cls_embedding = self.model.pipeline(images=train_data["image"],
+                                                                             text=train_data["text"])
             contrastive_loss = self.loss_function["contrastive_loss"](prediction=cls_image_embedding,
                                                                       target_data=cls_embedding)
             caption_loss = self.loss_function["caption_loss"](prediction=logits,

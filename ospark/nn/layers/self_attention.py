@@ -25,6 +25,7 @@ class SelfAttentionLayer(Layer):
         self._embedding_size  = embedding_size
         self._head_number     = head_number
         self._sequence_length = None
+        self._dropout_rate    = dropout_rate
         self._dropout_layer   = tf.keras.layers.Dropout(rate=dropout_rate)
         self._use_look_ahead  = use_look_ahead or False
 
@@ -152,7 +153,7 @@ class SelfAttentionLayer(Layer):
         if self.use_look_ahead and mask is not None:
             self._sequence_length = tf.shape(Q)[-2]
 
-            mask = (tf.cast(tf.math.not_equal(mask + self.look_ahead_mask, 0), tf.float32) * -1e9)[:, tf.newaxis, ...]
+            mask = (tf.cast(tf.math.not_equal(mask + self.look_ahead_mask, 0), tf.float32) * -1e9)
 
             scaled_dot_product += mask
         elif mask is not None:
@@ -175,13 +176,15 @@ class EncoderDecoderAttentionLayer(SelfAttentionLayer):
                  head_number: int,
                  dropout_rate: float,
                  is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None,
                  use_look_ahead: Optional[bool]=None) -> NoReturn:
         super().__init__(obj_name=obj_name, 
                          embedding_size=embedding_size, 
                          head_number=head_number,
                          dropout_rate=dropout_rate,
                          is_training=is_training,
-                         use_look_ahead=use_look_ahead)
+                         use_look_ahead=use_look_ahead,
+                         training_phase=training_phase)
 
     def pipeline(self, input_data: tf.Tensor, encoder_output: tf.Tensor, mask: Optional[tf.Tensor]=None):
         return self.layer_calculation(Q_input=input_data,

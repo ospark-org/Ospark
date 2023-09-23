@@ -36,7 +36,7 @@ with open(corpus_path, 'r') as fp:
     corpus = json.load(fp)
 
 # get data folder
-data_folder   = DataFolder(train_data_folder=training_data_folder, label_data_folder=target_data_folder)
+data_folder = DataFolder(train_data_folder=training_data_folder, label_data_folder=target_data_folder)
 # create data generator
 data_generator = FOTSDataGenerator(data_folder=data_folder,
                                    batch_size=2,

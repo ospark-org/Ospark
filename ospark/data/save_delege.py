@@ -6,5 +6,5 @@ class SaveDelegate:
     def __init__(self):
         pass
 
-    def save(self, weights: dict, path: str) -> NoReturn:
+    def save(self, save_obj: dict, path: str) -> NoReturn:
         raise NotImplementedError()

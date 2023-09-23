@@ -1,12 +1,15 @@
 import tensorflow as tf
-
+from typing import Optional
 from ospark.nn.loss_function.loss_function import LossFunction
 
 
 class SparseCategoricalCrossEntropy(LossFunction):
 
-    def __init__(self):
-        self._loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+    def __init__(self, from_logits: Optional[bool]=None, ignore_class: Optional[int]=None):
+        from_logits = False if from_logits is None else True
+        self._loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=from_logits,
+                                                                            ignore_class=ignore_class,
+                                                                            reduction='none')
 
     @property
     def loss_function(self) -> tf.keras.losses.Loss:
