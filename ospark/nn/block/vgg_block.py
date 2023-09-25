@@ -108,7 +108,7 @@ def fots_like_vgg(input_channel: int,
                                               pooling_size=[1, 2, 1, 1],
                                               pooling_strides=[1, 2, 1, 1],
                                               normalization=[BatchNormalization(obj_name="batch_norm",
-                                                                                input_depth=channel,
+                                                                                layer_dimension=channel,
                                                                                 is_training=trainable) for channel in layer_channels],
                                               activation=[ReLU() for i in layer_channels])
         vgg_blocks.append(vgg_block)

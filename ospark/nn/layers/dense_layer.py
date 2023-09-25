@@ -21,7 +21,9 @@ class DenseLayer(Layer):
         self._input_dimension  = input_dimension
         self._hidden_dimension = hidden_dimension
         self._layers_name      = []
-        self._activation       = PassActivation() if activation is None else getattr(Activation, activation.lower())()
+        if isinstance(activation, Activation):
+            activation = activation.__class__.__name__
+        self._activation       = PassActivation() if activation is None else getattr(Activation, activation)()
         self._use_bias         = use_bias
         self._forward          = self.bias_forward if use_bias else self.no_bias_forward
 
