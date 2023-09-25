@@ -184,8 +184,3 @@ class BatchNormalization(Normalization):
         if self.use_bias:
             normalization_outputs += self._beta
         return normalization_outputs
-
-    def get_model_info(self) -> dict:
-        BN_paras = super().get_model_info()
-        print(BN_paras)
-        return BN_paras
