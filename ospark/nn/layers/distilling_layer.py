@@ -24,7 +24,7 @@ class DistillingLayer(Layer):
         self._pooling_size   = pooling_size or [1, 3, 1]
         self._strides        = strides or [1, 2, 1]
         self._norm           = norm or BatchNormalization(obj_name="batch_norm",
-                                                          input_depth=embedding_size,
+                                                          layer_dimension=embedding_size,
                                                           is_training=is_training)
         self._activation     = activation or ospark.nn.layers.activation.ELU()
         self._pooling        = tf.nn.max_pool1d
