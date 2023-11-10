@@ -15,9 +15,23 @@ class SelfAttentionLayer(Layer):
                  embedding_size: int, 
                  head_number: int,
                  dropout_rate: float,
+                 mode: Optional[str]=None,
                  training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
                  use_look_ahead: Optional[bool]=None) -> NoReturn:
+        """
+        Args:
+            obj_name:
+            embedding_size:
+            head_number:
+            dropout_rate:
+            mode:
+                Has two modes "pre-ln" and "post-ln", default is "pre-ln"
+            training_phase:
+            is_training:
+            use_look_ahead:
+        """
+
         super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         assert embedding_size % head_number == 0
 
@@ -28,6 +42,7 @@ class SelfAttentionLayer(Layer):
         self._dropout_rate    = dropout_rate
         self._dropout_layer   = tf.keras.layers.Dropout(rate=dropout_rate)
         self._use_look_ahead  = use_look_ahead or False
+        self._mode            = mode if mode is not None else "pre-ln"
 
     @property
     def depth(self) -> int:
@@ -94,10 +109,15 @@ class SelfAttentionLayer(Layer):
                                                                        layer_dimension=self.embedding_size)
 
     def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None, *args, **kwargs):
-        return self.layer_calculation(Q_input=input_data,
-                                      K_input=input_data,
-                                      V_input=input_data,
-                                      mask=mask)
+        if self._mode == "pre-ln":
+            input_data = self._norm(input_data=input_data)
+        output = self.layer_calculation(Q_input=input_data,
+                                        K_input=input_data,
+                                        V_input=input_data,
+                                        mask=mask)
+        if self._mode == "post-ln":
+            output = self._norm(input_data=output)
+        return output
 
     def layer_calculation(self,
                           Q_input: tf.Tensor,
@@ -111,8 +131,7 @@ class SelfAttentionLayer(Layer):
 
         residual_output = self.residual_net(input_data=Q_input)
         added_residual  = tf.add(self.dropout_layer(main_output, training=self.training_phase), residual_output)
-        layer_output    = self._norm(added_residual)
-        return layer_output
+        return added_residual
 
     def QKV_process(self,
                     Q_input: tf.Tensor,
@@ -175,22 +194,42 @@ class EncoderDecoderAttentionLayer(SelfAttentionLayer):
                  embedding_size: int, 
                  head_number: int,
                  dropout_rate: float,
+                 mode: Optional[str]=None,
                  is_training: Optional[bool]=None,
                  training_phase: Optional[bool]=None,
                  use_look_ahead: Optional[bool]=None) -> NoReturn:
+        """
+        Args:
+            obj_name:
+            embedding_size:
+            head_number:
+            dropout_rate:
+            mode:
+                Has two modes "pre-ln" and "post-ln", default is "pre-ln"
+            training_phase:
+            is_training:
+            use_look_ahead:
+        """
+
         super().__init__(obj_name=obj_name, 
                          embedding_size=embedding_size, 
                          head_number=head_number,
                          dropout_rate=dropout_rate,
                          is_training=is_training,
+                         mode=mode,
                          use_look_ahead=use_look_ahead,
                          training_phase=training_phase)
 
     def pipeline(self, input_data: tf.Tensor, encoder_output: tf.Tensor, mask: Optional[tf.Tensor]=None):
-        return self.layer_calculation(Q_input=input_data,
-                                      K_input=encoder_output,
-                                      V_input=encoder_output,
-                                      mask=mask)
+        if self._mode == "pre-ln":
+            input_data = self._norm(input_data=input_data)
+        output = self.layer_calculation(Q_input=input_data,
+                                        K_input=encoder_output,
+                                        V_input=encoder_output,
+                                        mask=mask)
+        if self._mode == "post-ln":
+            output = self._norm(input_data=output)
+        return output
 
 
 class KernelFunction:

@@ -14,15 +14,30 @@ class FeedForwardLayer(Layer):
                  embedding_size: int, 
                  scale_rate: int,
                  dropout_rate: float,
+                 mode: Optional[int]=None,
                  training_phase: Optional[bool]=None,
                  is_training: Optional[bool]=None,
                  activation: Optional[Activation]=None) -> NoReturn:
+        """
+        Args:
+            obj_name: str
+            embedding_size: int
+            scale_rate: int
+            dropout_rate: float
+            mode: Optional[int]
+                Has two modes "pre-ln" and "post-ln", default is "pre-ln"
+            training_phase: Optional[bool]
+            is_training: Optional[bool]
+            activation: Optional[Activation]
+        """
+
         super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         self._activation     = activation or ospark.nn.layers.activation.ReLU()
         self._embedding_size = embedding_size
         self._scale_rate     = scale_rate
         self._dropout_rate   = dropout_rate
         self._dropout_layer  = tf.keras.layers.Dropout(rate=dropout_rate)
+        self._mode           = mode if mode is not None else "pre-ln"
 
     @property
     def embedding_size(self) -> int:
@@ -58,11 +73,14 @@ class FeedForwardLayer(Layer):
                                                                        layer_dimension=self.embedding_size)
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
-        main_output          = self.feedforward(input_data)
-        residual_output      = self.residual_net(input_data)
-        added_residual       = tf.add(self.dropout_layer(main_output, training=self.training_phase), residual_output)
-        normalization_output = self._norm(added_residual)
-        return normalization_output
+        if self._mode == "pre-ln":
+            input_data = self._norm(input_data=input_data)
+        main_output      = self.feedforward(input_data=input_data)
+        residual_output  = self.residual_net(input_data=input_data)
+        output           = tf.add(self.dropout_layer(main_output, training=self.training_phase), residual_output)
+        if self._mode == "post-ln":
+            output = self._norm(output)
+        return output
 
     def feedforward(self, input_data: tf.Tensor) -> tf.Tensor:
         mapping2high_dimensional = tf.matmul(input_data, self._mapping2high_dimensional) + self._high_dimensional_bias
