@@ -2,6 +2,7 @@ from __future__ import annotations
 import tensorflow as tf 
 from typing import List, NoReturn, Optional
 from .name_space import NameSpace
+import logging
 
 
 class Weight:
@@ -112,6 +113,8 @@ class WeightOperator:
 
     @classmethod
     def clear_restore_weights(cls) -> NoReturn:
+        if cls._restore_weights != {}:
+            logging.info(f"There are still {cls._restore_weights.keys()} in the temporary weight that has not been read and will be deleted soon.")
         cls._restore_weights.clear()
 
     def clear_weights(self):
