@@ -116,6 +116,7 @@ class FOTSTrainer(Trainer):
                               epoch_number: int,
                               optimizer: Optimizer,
                               reg_optimizer: Optimizer,
+                              transpose_dimension: Optional[List[int]]=None,
                               detection_model: Optional[Model]=None,
                               recognition_model: Optional[Model]=None,
                               save_path: Optional[str]=None,
@@ -130,7 +131,9 @@ class FOTSTrainer(Trainer):
                                                                         sequential_output_channels=[[64, 64],
                                                                                                     [128, 128],
                                                                                                     [256, 256]],
-                                                                        trainable=trainable)
+                                                                        trainable=trainable,
+                                                                        transpose_dimension=transpose_dimension,
+                                                                        )
         return cls(data_generator=data_generator,
                    detection_model=detection_model,
                    recognition_model=recognition_model,

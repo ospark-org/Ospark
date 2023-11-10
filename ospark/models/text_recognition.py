@@ -16,11 +16,13 @@ class TextRecognition(Model):
                  classify_layer: Layer,
                  sequential_conv: List[Block],
                  sequential_model: List[Block],
+                 transpose_dimension: Optional[List[int]]=None,
                  trained_weights: Optional[dict]=None):
         super().__init__(obj_name=obj_name, trained_weights=trained_weights)
-        self._classify_layer   = classify_layer
-        self._sequential_conv  = sequential_conv
-        self._sequential_model = sequential_model
+        self._classify_layer      = classify_layer
+        self._sequential_conv     = sequential_conv
+        self._sequential_model    = sequential_model
+        self._transpose_dimension = transpose_dimension
 
     @property
     def classify_layer(self) -> Layer:
@@ -45,6 +47,8 @@ class TextRecognition(Model):
         sequential_conv_output = reduce(lambda output, layer: layer.pipeline(output), self.sequential_conv, input_data) * mask[:, tf.newaxis, :, tf.newaxis]
         sequence_model_output  = reduce(lambda output, layer: layer.pipeline(output), self.sequential_model, tf.squeeze(sequential_conv_output, axis=1))
         prediction             = self.classify_layer.pipeline(sequence_model_output)
+        if self._transpose_dimension is not None:
+            prediction = tf.transpose(prediction, self._transpose_dimension)
         return prediction
 
 
@@ -54,6 +58,8 @@ def fots_recognition_model(class_number: int,
                            input_channel: int,
                            retrained_weights:dict,
                            sequential_output_channels: List[List[int]],
+                           mode: Optional[str]=None,
+                           transpose_dimension: Optional[List[int]]=None,
                            dropout_rate: Optional[float]=0.0,
                            sequential_model_block_number: Optional[int]=4,
                            trainable: Optional[bool]=True
@@ -64,12 +70,18 @@ def fots_recognition_model(class_number: int,
     sequential_model = []
     for i in range(sequential_model_block_number):
         name  = f"block_{i}"
+        if i+1 == sequential_model_block_number:
+            use_norm_output = True
+        else:
+            use_norm_output = False
         block = transformer_encoder_block(obj_name=name,
                                           embedding_size=sequential_output_channels[-1][-1],
                                           head_number=head_number,
                                           scale_rate=scale_rate,
                                           dropout_rate=dropout_rate,
-                                          is_training=trainable)
+                                          is_training=trainable,
+                                          use_norm_output=use_norm_output,
+                                          mode=mode)
         sequential_model.append(block)
 
     classify_layer   = DenseLayer(obj_name="classify_layer",
@@ -79,4 +91,5 @@ def fots_recognition_model(class_number: int,
                            trained_weights=retrained_weights,
                            sequential_conv=sequential_conv,
                            sequential_model=sequential_model,
-                           classify_layer=classify_layer)
+                           classify_layer=classify_layer,
+                           transpose_dimension=transpose_dimension)
