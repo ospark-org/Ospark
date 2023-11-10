@@ -140,9 +140,7 @@ class CoCa(Model):
                                           dropout_rate=self._dropout_rate,
                                           activation=SwiGLU(dimension=self._embedding_size * self._scale_rate,
                                                             is_training=self.is_training))
-            block = TransformerEncoderBlock(obj_name=f"unimodal_block_{i}",
-                                            attention=att_layer,
-                                            feedforward=ffnn_layer)
+            block = TransformerEncoderBlock(obj_name=f"unimodal_block_{i}", feedforward=ffnn_layer, attention=att_layer)
             decoder_blocks.append(block)
         return decoder_blocks
 
