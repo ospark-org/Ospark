@@ -17,6 +17,7 @@ class FormerBuilder:
                  scale_rate: int,
                  sample_factor: float,
                  dropout_rate: float,
+                 use_classify_layer: Optional[bool]=None,
                  trained_weights: Optional[dict] = None,
                  is_training: Optional[bool] = None,
                  use_decoder: bool = True,
@@ -36,7 +37,8 @@ class FormerBuilder:
                                                              filter_width=filter_width,
                                                              pooling_size=pooling_size,
                                                              strides=strides,
-                                                             is_training=is_training))
+                                                             is_training=is_training,
+                                                             dropout_rate=dropout_rate))
                 if use_decoder:
                     decoder_name = f"decoder_block_{i}"
                     decoder_blocks.append(informer_decoder_block(obj_name=decoder_name,
@@ -44,7 +46,8 @@ class FormerBuilder:
                                                                  head_number=head_number,
                                                                  scale_rate=scale_rate,
                                                                  sample_factor=sample_factor,
-                                                                 is_training=is_training))
+                                                                 is_training=is_training,
+                                                                 dropout_rate=dropout_rate))
             return Informer(obj_name="Informer",
                             trained_weights=trained_weights,
                             encoder_blocks=encoder_blocks,
@@ -52,7 +55,8 @@ class FormerBuilder:
                             embedding_size=embedding_size,
                             decoder_blocks=decoder_blocks,
                             dropout_rate=dropout_rate,
-                            is_training=is_training)
+                            is_training=is_training,
+                            use_classify_layer=use_classify_layer)
 
     @staticmethod
     def transformer(block_number: int,
