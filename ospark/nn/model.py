@@ -4,7 +4,9 @@ from typing import Optional, NoReturn, List, Tuple, Dict
 from ospark import WeightOperator
 from inspect import signature
 from abc import abstractmethod
+from functools import reduce
 import tensorflow as tf
+import numpy as np
 import importlib
 
 
@@ -141,6 +143,14 @@ class Model(ModelObject, metaclass=ModelMeta):
         self._weight_operator.restore(weights=weights)
         self.create()
         self._weight_operator.clear_restore_weights()
+
+    def __repr__(self):
+        weights          = self._weight_operator.get_weights(partition_name=self.obj_name)
+        parameter_number = 0
+        for weight in weights.values():
+            parameter_number += reduce(lambda init_value, shape: init_value * shape, np.array(weight).shape, 1)
+        parameter_number = '{:,}'.format(parameter_number)
+        return f"Parameters number: {parameter_number}"
 
     @abstractmethod
     def pipeline(self, *args, **kwargs) -> tf.Tensor:
