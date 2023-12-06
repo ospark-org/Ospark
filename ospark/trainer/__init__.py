@@ -5,10 +5,14 @@ from typing import NoReturn, Optional, Callable, List, Tuple, Union, Dict
 from tensorflow.keras.optimizers import Optimizer
 from ospark.nn.loss_function.loss_function import LossFunction
 from ospark.nn.model import Model
+from logging import Logger
 import tensorflow as tf
+import logging
 import json
 import time
 
+
+logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 
 class Trainer:
 
@@ -18,18 +22,47 @@ class Trainer:
                  epoch_number: int,
                  optimizer: Optimizer,
                  loss_function: Union[LossFunction, Dict[str, LossFunction]],
+                 save_weights_path: str,
+                 save_info_path: str,
+                 presentation_of_loss_value: Optional[int]=None,
                  save_delegate: Optional[SaveDelegate]=None,
                  save_times: Optional[int]=None,
-                 save_path: Optional[str]=None,
                  use_auto_graph: Optional[bool]=True,
                  use_multi_gpu: Optional[bool]=None,
-                 devices: Optional[List[str]]=None):
-        self._weights_operator = WeightOperator()
-        self._loss_function    = loss_function
-        self._epoch_number     = epoch_number
-        self._save_delegate    = save_delegate or self
-        self._save_times       = save_times
-        self._save_path        = save_path
+                 devices: Optional[List[str]]=None,
+                 logger: Optional[Union[Logger, str]]=None):
+        """
+        Args:
+            model:
+            data_generator:
+            epoch_number:
+            optimizer:
+            loss_function:
+            save_weights_path:
+            save_info_path:
+            presentation_of_loss_value:
+            save_delegate:
+            save_times:
+            use_auto_graph:
+            use_multi_gpu:
+            devices:
+            logger:
+        """
+
+        self._weights_operator  = WeightOperator()
+        self._loss_function     = loss_function
+        self._epoch_number      = epoch_number
+        self._save_delegate     = save_delegate or self
+        self._save_times        = save_times
+        self._save_weights_path = save_weights_path
+        self._save_info_path    = save_info_path
+
+        if type(logger) == str:
+            self._logger = logging.getLogger(name=logger)
+        else:
+            self._logger         = logger or logging
+
+        self._presentation_of_loss_value = presentation_of_loss_value
 
         use_multi_gpu = use_multi_gpu or False
         if use_multi_gpu:
@@ -86,39 +119,53 @@ class Trainer:
         return self._save_times
 
     @property
-    def save_path(self) -> str:
-        return self._save_path
+    def save_weights_path(self) -> str:
+        return self._save_weights_path
 
     @property
     def training_method(self) -> Callable:
         return self._training_method
 
+    @property
+    def save_info_path(self) -> str:
+        return self._save_info_path
+
+    @property
+    def logger(self) -> Logger:
+        return self._logger
+
     def start(self):
-        print("=" * 24)
-        print("Training start.")
+        self._logger.info("=" * 24)
+        self._logger.info("Training start.")
         self.training_process()
-        print("Training end.")
-        print("=" * 24)
+        self._logger.info("Training end.")
+        self._logger.info("=" * 24)
 
     def training_process(self) -> NoReturn:
         for epoch in range(self.epoch_number):
             total_loss_value = 0
             training_count   = 0
             start_time       = time.time()
-            for batch, dataset in enumerate(self.data_generator):
+            for step, dataset in enumerate(self.data_generator):
                 training_data, target_data = dataset.training_data, dataset.target_data
                 loss_value = self.training_method(training_data, target_data)
                 total_loss_value += loss_value
                 training_count   += 1
+                if self._presentation_of_loss_value is not None and step % self._presentation_of_loss_value == 0:
+                    self._logger.info(f"step: {step}, loss value : {total_loss_value / training_count}")
+                    self._logger.info("estimated time pre epoch: ", self.data_generator.max_step / (step + 1) * (time.time() - start_time))
 
-            print(f'Epoch {epoch + 1} '
-                  f'Loss {total_loss_value / training_count:.4f} ')
-            print(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
-            if self.will_save(epoch_number=epoch) and self.save_path is not None:
-                self.save_delegate.save(weights=self.weights_operator.weights, path=self.save_path)
 
-        if self.save_path is not None:
-            self.save_delegate.save(weights=self.weights_operator.weights, path=self.save_path)
+            self._logger.info(f'Epoch {epoch + 1}, '
+                              f'Loss {total_loss_value / training_count:.4f}')
+            self._logger.info(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
+            if self.will_save(epoch_number=epoch) and self.save_weights_path is not None:
+                self.save_delegate.save(save_obj=self.weights_operator.weights, path=self.save_weights_path)
+                self.save_delegate.save(save_obj=self.model.get_model_info(), path=self.save_info_path)
+
+        if self.save_weights_path is not None:
+            self.save_delegate.save(save_obj=self.weights_operator.weights, path=self.save_weights_path)
+            self.save_delegate.save(save_obj=self.model.get_model_info(), path=self.save_info_path)
 
     def train_step(self, train_data: tf.Tensor, target_data: tf.Tensor):
         with tf.GradientTape() as tape:
@@ -157,8 +204,8 @@ class Trainer:
         return (self.mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, accuracies, axis=None),
                 self.mirrored_strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None))
 
-    def save(self, weights: dict, path: str) -> NoReturn:
+    def save(self, save_obj: dict, path: str) -> NoReturn:
         with open(path, 'w') as fp:
-            json.dump(weights, fp)
+            json.dump(save_obj, fp)
 
 

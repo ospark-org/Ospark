@@ -8,6 +8,7 @@ from ospark.nn.layers.activation import GELU
 from . import Block
 import tensorflow as tf
 
+
 class InformerEncoderBlock(Block):
 
     def __init__(self,
@@ -16,10 +17,10 @@ class InformerEncoderBlock(Block):
                  feedforward: FeedForwardLayer,
                  distilling: DistillingLayer) -> NoReturn:
         super().__init__(obj_name)
-        self._attention      = attention
-        self._feedforward    = feedforward
-        self._distilling     = distilling
- 
+        self._attention = attention
+        self._feedforward = feedforward
+        self._distilling = distilling
+
     @property
     def attention(self) -> SelfAttentionLayer:
         return self._attention
@@ -41,7 +42,7 @@ class InformerEncoderBlock(Block):
                          attention_cls: Type[SelfAttentionLayer],
                          feedforward_cls: Type[FeedForwardLayer],
                          distilling_cls: Type[DistillingLayer],
-                         is_training: Optional[bool]=None) -> InformerEncoderBlock:
+                         is_training: Optional[bool] = None) -> InformerEncoderBlock:
         return cls(obj_name=obj_name,
                    attention=attention_cls(obj_name="attention",
                                            embedding_size=embedding_size,
@@ -55,15 +56,10 @@ class InformerEncoderBlock(Block):
                                              embedding_size=embedding_size,
                                              is_training=is_training))
 
-    def in_creating(self) -> NoReturn:
-        self.assign(component=self.attention, name="attention")
-        self.assign(component=self.feedforward, name="feedforward")
-        self.assign(component=self.distilling, name="distilling")
-
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
-        layers = [self.assigned.attention(None),
-                  self.assigned.feedforward,
-                  self.assigned.distilling]
+        layers = [self._attention,
+                  self._feedforward,
+                  self._distilling]
         output = input_data
         for layer in layers:
             output = layer.pipeline(output)
@@ -78,9 +74,9 @@ class InformerDecoderBlock(Block):
                  encode_decode_attention: EncoderDecoderAttentionLayer,
                  feedforward: FeedForwardLayer) -> NoReturn:
         super().__init__(obj_name)
-        self._attention               = attention
+        self._attention = attention
         self._encode_decode_attention = encode_decode_attention
-        self._feedforward             = feedforward
+        self._feedforward = feedforward
 
     @property
     def attention(self) -> SelfAttentionLayer:
@@ -94,15 +90,10 @@ class InformerDecoderBlock(Block):
     def feedforward(self) -> FeedForwardLayer:
         return self._feedforward
 
-    def in_creating(self) -> NoReturn:
-        self.assign(component=self.attention, name="attention")
-        self.assign(component=self.encode_decode_attention, name="encode_decode_attention")
-        self.assign(component=self.feedforward, name="feedforward")
-
     def pipeline(self, input_data: tf.Tensor, encoder_output: tf.Tensor) -> tf.Tensor:
-        layers = [self.assigned.attention(None),
-                  self.assigned.encode_decode_attention(mask=None, encoder_output=encoder_output),
-                  self.feedforward]
+        layers = [self._attention,
+                  self._encode_decode_attention(mask=None, encoder_output=encoder_output),
+                  self._feedforward]
         output = input_data
         for layer in layers:
             output = layer(output)
@@ -115,33 +106,34 @@ def informer_encoder_block(obj_name: str,
                            scale_rate: int,
                            sample_factor: float,
                            dropout_rate: float,
-                           is_training: Optional[bool]=None,
-                           filter_width: int=None,
-                           pooling_size: list=None,
-                           strides: list=None) -> Block:
-    attention   = ProbSparseAttentionLayer("attention",
-                                           embedding_size=embedding_size,
-                                           head_number=head_number,
-                                           sample_factor=sample_factor,
-                                           dropout_rate=dropout_rate,
-                                           is_training=is_training)
+                           is_training: Optional[bool] = None,
+                           filter_width: int = None,
+                           pooling_size: list = None,
+                           strides: list = None) -> Block:
+    attention = ProbSparseAttentionLayer("attention",
+                                         embedding_size=embedding_size,
+                                         head_number=head_number,
+                                         sample_factor=sample_factor,
+                                         dropout_rate=dropout_rate,
+                                         is_training=is_training)
     feedforward = FeedForwardLayer("feedforward",
                                    embedding_size=embedding_size,
                                    scale_rate=scale_rate,
                                    activation=GELU(),
                                    dropout_rate=dropout_rate,
                                    is_training=is_training)
-    distilling  = DistillingLayer("distilling",
-                                  embedding_size=embedding_size,
-                                  filter_width=filter_width,
-                                  pooling_size=pooling_size,
-                                  strides=strides,
-                                  is_training=is_training)
+    distilling = DistillingLayer("distilling",
+                                 embedding_size=embedding_size,
+                                 filter_width=filter_width,
+                                 pooling_size=pooling_size,
+                                 strides=strides,
+                                 is_training=is_training)
     block = InformerEncoderBlock(obj_name=obj_name,
                                  attention=attention,
                                  feedforward=feedforward,
                                  distilling=distilling)
     return block
+
 
 def informer_decoder_block(obj_name: str,
                            embedding_size: int,
@@ -149,7 +141,7 @@ def informer_decoder_block(obj_name: str,
                            scale_rate: int,
                            sample_factor: float,
                            dropout_rate: float,
-                           is_training: Optional[bool]=False) -> Block:
+                           is_training: Optional[bool] = False) -> Block:
     attention = ProbSparseAttentionLayer("sparse_attention",
                                          embedding_size=embedding_size,
                                          head_number=head_number,

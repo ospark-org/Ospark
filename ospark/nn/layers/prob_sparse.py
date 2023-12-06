@@ -38,7 +38,8 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
                     K_input: tf.Tensor,
                     V_input: tf.Tensor,
                     batch_size: tf.int32) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-        Q, K, V = super().QKV_process(Q_input=Q_input, K_input=K_input, V_input=V_input)
+        batch_size = tf.shape(Q_input)[0]
+        Q, K, V    = super().QKV_process(Q_input=Q_input, K_input=K_input, V_input=V_input, batch_size=batch_size)
         Q_bar = self.sampling(Q, K)
         return Q_bar, K, V
 
@@ -59,7 +60,7 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
                           :]
         return Q_bar
 
-    def attention(self, Q: tf.Tensor, K: tf.Tensor, V: tf.Tensor, mask: tf.Tensor=None) -> tf.Tensor:
+    def attention(self, Q: tf.Tensor, K: tf.Tensor, V: tf.Tensor, batch_size: int, mask: tf.Tensor=None) -> tf.Tensor:
         batch, head_number, V_sequence_length, embedding_size = tf.shape(V)
         K = tf.transpose(K, [0, 1, 3, 2])
         scaled_dot_product = tf.matmul(Q, K) / tf.math.sqrt(tf.cast(self.embedding_size, dtype=tf.float32))
@@ -72,6 +73,7 @@ class ProbSparseAttentionLayer(SelfAttentionLayer):
             scaled_dot_product += (mask[np.arange(batch)[:, None, None],
                                         np.arange(head_number)[None, :, None],
                                         self.top_u, :] * -1e9)
+
         mean_V = self.create_mean_value(V)
         scaled_dot_product = tf.nn.softmax(scaled_dot_product)
         mean_V.numpy()[np.arange(batch)[:, None, None],

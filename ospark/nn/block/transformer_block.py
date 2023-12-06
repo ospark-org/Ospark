@@ -6,17 +6,35 @@ from ospark.nn.layers.feed_forward import FeedForwardLayer
 from ospark.nn.layers.deep_feed_forward import DeepFeedForwardLayer
 from . import Block
 import tensorflow as tf
+import ospark
 
 
 class TransformerEncoderBlock(Block):
 
     def __init__(self,
                  obj_name: str,
+                 feedforward: FeedForwardLayer,
                  attention: SelfAttentionLayer,
-                 feedforward: FeedForwardLayer) -> NoReturn:
-        super().__init__(obj_name=obj_name)
-        self._attention   = attention
-        self._feedforward = feedforward
+                 embedding_size: int,
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None,
+                 use_norm_output: Optional[bool]=None) -> NoReturn:
+        """
+        Args:
+            obj_name:
+            feedforward:
+            attention:
+            is_training:
+            training_phase:
+            use_norm_output:
+                Has two modes "pre-ln" and "post-ln", default is "pre-ln"
+        """
+
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
+        self._attention       = attention
+        self._feedforward     = feedforward
+        self._use_norm_output = use_norm_output if use_norm_output is not None else True
+        self._embedding_size  = embedding_size
     
     @property
     def attention(self) -> SelfAttentionLayer:
@@ -25,6 +43,10 @@ class TransformerEncoderBlock(Block):
     @property
     def feedforward(self) -> FeedForwardLayer:
         return self._feedforward
+
+    @property
+    def embedding_size(self) -> int:
+        return self._embedding_size
 
     @classmethod
     def create_via_class(cls,
@@ -46,15 +68,21 @@ class TransformerEncoderBlock(Block):
                                                embedding_size=embedding_size,
                                                scale_rate=scale_rate,
                                                dropout_rate=dropout_rate,
-                                               is_training=is_training))
+                                               is_training=is_training),
+                   embedding_size=embedding_size)
 
     def in_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
         self.assign(name="feedforward", component=self.feedforward)
+        if self._use_norm_output:
+            self._norm = ospark.nn.layers.normalization.LayerNormalization(obj_name="layer_norm",
+                                                                           layer_dimension=self.embedding_size)
     
     def pipeline(self, input_data: tf.Tensor, mask: Optional[tf.Tensor]=None) -> tf.Tensor:
         output = self.assigned.attention.pipeline(input_data=input_data, mask=mask)
         output = self.assigned.feedforward.pipeline(input_data=output)
+        if self._use_norm_output:
+            output = self._norm(output)
         return output
 
 
@@ -64,11 +92,17 @@ class TransformerDecoderBlock(Block):
                  obj_name: str,
                  attention: SelfAttentionLayer,
                  encode_decode_attention: EncoderDecoderAttentionLayer,
-                 feedforward: FeedForwardLayer) -> NoReturn:
-        super().__init__(obj_name)
+                 feedforward: FeedForwardLayer,
+                 embedding_size: int,
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None,
+                 use_norm_output: Optional[bool]=None) -> NoReturn:
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         self._attention               = attention
         self._encode_decode_attention = encode_decode_attention
         self._feedforward             = feedforward
+        self._use_norm_output         = use_norm_output if use_norm_output is not None else True
+        self._embedding_size          = embedding_size
     
     @property
     def attention(self) -> SelfAttentionLayer:
@@ -81,6 +115,10 @@ class TransformerDecoderBlock(Block):
     @property
     def feedforward(self) -> FeedForwardLayer:
         return self._feedforward
+
+    @property
+    def embedding_size(self) -> int:
+        return self._embedding_size
 
     @classmethod
     def create_via_class(cls,
@@ -109,12 +147,16 @@ class TransformerDecoderBlock(Block):
                                                embedding_size=embedding_size,
                                                scale_rate=scale_rate,
                                                dropout_rate=dropout_rate,
-                                               is_training=is_training))
+                                               is_training=is_training),
+                   embedding_size=embedding_size)
 
     def in_creating(self) -> NoReturn:
         self.assign(name="attention", component=self.attention)
         self.assign(name="encode_decode_attention", component=self.encode_decode_attention)
         self.assign(name="feedforward", component=self.feedforward)
+        if self._use_norm_output:
+            self._norm = ospark.nn.layers.normalization.LayerNormalization(obj_name="layer_norm",
+                                                                           layer_dimension=self.embedding_size)
 
     def pipeline(self,
                  input_data: tf.Tensor,
@@ -126,6 +168,8 @@ class TransformerDecoderBlock(Block):
                                                                 mask=encoder_padding_mask,
                                                                 encoder_output=encoder_output)
         output = self.assigned.feedforward.pipeline(input_data=output)
+        if self._use_norm_output:
+            output = self._norm(output)
         return output
 
 
@@ -134,20 +178,23 @@ def transformer_encoder_block(obj_name: str,
                               head_number: int,
                               scale_rate: int,
                               dropout_rate: float,
+                              mode: Optional[str]=None,
+                              use_norm_output: Optional[bool]=None,
                               is_training: Optional[bool]=None) -> Block:
     attention = SelfAttentionLayer(obj_name="attention",
                                    embedding_size=embedding_size,
                                    head_number=head_number,
                                    dropout_rate=dropout_rate,
-                                   is_training=is_training)
+                                   is_training=is_training,
+                                   mode=mode)
     feedforward = FeedForwardLayer(obj_name="feedforward",
                                    embedding_size=embedding_size,
                                    scale_rate=scale_rate,
                                    dropout_rate=dropout_rate,
-                                   is_training=is_training)
-    block = TransformerEncoderBlock(obj_name=obj_name, 
-                                    attention=attention, 
-                                    feedforward=feedforward)
+                                   is_training=is_training,
+                                   mode=mode)
+    block = TransformerEncoderBlock(obj_name=obj_name, feedforward=feedforward, attention=attention,
+                                    is_training=is_training, embedding_size=embedding_size, use_norm_output=use_norm_output)
     return block
 
 def transformer_decoder_block(obj_name: str,
@@ -155,6 +202,7 @@ def transformer_decoder_block(obj_name: str,
                               head_number: int,
                               scale_rate: int,
                               dropout_rate: float,
+                              use_norm_output: Optional[bool]=None,
                               is_training: Optional[bool]=None) -> Block:
     attention = SelfAttentionLayer(obj_name="attention",
                                    embedding_size=embedding_size,
@@ -175,7 +223,9 @@ def transformer_decoder_block(obj_name: str,
     block = TransformerDecoderBlock(obj_name=obj_name, 
                                     attention=attention, 
                                     encode_decode_attention=encode_decode_attention,
-                                    feedforward=feedforward)
+                                    feedforward=feedforward,
+                                    embedding_size=embedding_size,
+                                    use_norm_output=use_norm_output)
     return block
 
 from ospark.nn.layers.self_attention import FavorAttentionLayer, EncodeDecodeFavorAttention
@@ -199,9 +249,7 @@ def performer_encoder_block(obj_name: str,
                                    scale_rate=scale_rate,
                                    dropout_rate=dropout_rate,
                                    is_training=is_training)
-    block = TransformerEncoderBlock(obj_name=obj_name,
-                                    attention=attention,
-                                    feedforward=feedforward)
+    block = TransformerEncoderBlock(obj_name=obj_name, feedforward=feedforward, attention=attention)
     return block
 
 

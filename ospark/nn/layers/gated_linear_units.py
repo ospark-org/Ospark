@@ -10,6 +10,8 @@ class Bilinear(Activation):
                  dimension: int,
                  is_training: Optional[bool]):
         super(Bilinear, self).__init__(is_training=is_training)
+        self._dimension = dimension
+
         self._weight_1 = weight_initializer.glorot_uniform(obj_name="weight_1", shape=[dimension, dimension])
         self._weight_2 = weight_initializer.glorot_uniform(obj_name="weight_2", shape=[dimension, dimension])
 
@@ -57,7 +59,7 @@ class SwiGLU(GLU):
                  beta: Optional[float]=None,
                  is_training: Optional[bool]=None):
         super(SwiGLU, self).__init__(dimension=dimension, is_training=is_training)
-
+        self._beta               = beta
         self.activation_function = Swish(beta=beta or 1.)
 
 

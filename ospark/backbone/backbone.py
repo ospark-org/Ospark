@@ -7,8 +7,9 @@ class Backbone(ModelObject):
     def __init__(self,
                  obj_name: str,
                  is_keep_blocks: Optional[bool]=None,
-                 is_training: Optional[bool]=None):
-        super().__init__(obj_name=obj_name, is_training=is_training)
+                 is_training: Optional[bool]=None,
+                 training_phase: Optional[bool]=None):
+        super().__init__(obj_name=obj_name, is_training=is_training, training_phase=training_phase)
         if is_keep_blocks is not None:
             self._is_keep_blocks = is_keep_blocks
         else:

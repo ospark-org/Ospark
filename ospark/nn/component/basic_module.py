@@ -1,8 +1,10 @@
 from __future__ import annotations
 from ospark.nn.component.weight import Weight
-from typing import NoReturn, Optional, Set, Union, Any
+from typing import NoReturn, Optional, Set, Union, Any, List
 from .name_space import NameSpace
+from inspect import signature
 import tensorflow as tf
+import pathlib
 
 
 # TODO 如果這邊 input_data 內有 Weight 的話，會有問題，因為沒辦法用 Descriptor 去 get
@@ -34,7 +36,7 @@ class Descriptor:
             if isinstance(value, Weight) and value._is_default_setting:
                 value._trainable = instance.is_training
             elif isinstance(value, ModelObject):
-                value._is_training = instance.is_training
+                value.is_training = instance.is_training
         identifier = id(instance)
         self._obj_package[identifier] = value
 
@@ -78,6 +80,18 @@ class ModelObject(metaclass=MetaObject):
     def is_training(self) -> bool:
         return self._is_training
 
+    @is_training.setter
+    def is_training(self, value: bool) -> None:
+        for attr in self.__class__.__dict__.values():
+            if isinstance(attr, Descriptor):
+                if id(self) not in attr._obj_package:
+                    continue
+                obj = attr._obj_package[id(self)]
+                if isinstance(obj, Weight) and obj._is_default_setting:
+                    obj._trainable = value
+                elif isinstance(obj, ModelObject):
+                    obj.is_training = value
+
     @property
     def training_phase(self) -> bool:
         return self._training_phase
@@ -89,6 +103,30 @@ class ModelObject(metaclass=MetaObject):
             if isinstance(assigned, ModelObject):
                 assigned.training_phase = value
 
+    # TODO 如果這樣 restore 後，會需要注意 training_phase 的設定，會有需要可以設定全體或是部分設定 is_training 跟 training_phase 的機制
+    def get_model_info(self) -> dict:
+        paras = list(signature(self.__class__.__init__).parameters.keys())
+        info = {"class_name": self.__class__.__name__,
+                "import_path": self.__class__.__module__,
+                "kwargs": {}}
+        for para_name in paras[1:]:
+
+            value = getattr(self, f"_{para_name}")
+            if isinstance(value, ModelObject):
+                value = value.get_model_info()
+            elif type(value) == list and isinstance(value[0], ModelObject):
+                model_objs = []
+                for model_obj in value:
+                    model_objs.append(model_obj.get_model_info())
+                value = model_objs
+            elif type(value) in (bool, int, float, list, dict, str):
+                value = value
+            else:
+                continue
+
+            info["kwargs"][para_name] = value
+        return info
+
     def in_creating(self) -> NoReturn:
         pass
 
@@ -99,7 +137,11 @@ class ModelObject(metaclass=MetaObject):
     def create(self) -> NoReturn:
         with NameSpace(name=self.obj_name):
             for component in self.assigned:
-                component.create()
+                if isinstance(component, list):
+                    for ModelObject in component:
+                        ModelObject.create()
+                else:
+                    component.create()
 
 
 class Assigned:

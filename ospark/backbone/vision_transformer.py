@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 from ospark.nn.block.transformer_block import transformer_encoder_block
 from ospark.nn.layers.dense_layer import DenseLayer
 from ospark import weight_initializer
+from ospark.algorithm.blokcwise_making import BlockwiseMasking
 from functools import reduce
 import tensorflow as tf
 import numpy as np
@@ -20,18 +21,23 @@ class VisionTransformer(Model):
                  encoder_number: int,
                  scale_rate: int,
                  dropout_rate: float,
-                 encoder_block_number: Optional[int]=None,
+                 delay_create: Optional[bool]=None,
                  classification_number: Optional[int]=None,
                  embedding_size: Optional[int]=None,
                  is_training: Optional[bool]=None,
                  trained_weights: Optional[dict]=None):
-        super().__init__(obj_name=obj_name, is_training=is_training, trained_weights=trained_weights)
+        super().__init__(obj_name=obj_name,
+                         delay_create=delay_create,
+                         is_training=is_training,
+                         trained_weights=trained_weights)
         self._image_height     = image_height
         self._image_width      = image_width
         self._patch_height     = patch_height
         self._patch_width      = patch_width
+
         assert image_height % patch_height == 0 and image_width % patch_width == 0
 
+        self._encoder_number   = encoder_number
         self._head_number      = head_number
         self._scale_rate       = scale_rate
         self._input_dimension  = patch_height * patch_width * 3
@@ -71,14 +77,15 @@ class VisionTransformer(Model):
                                                       is_training=is_training)
             self._blocks.append(encoder_block)
 
-    def pipeline(self, input_data: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    def pipeline(self, input_data: tf.Tensor, mask_matrix: Optional[tf.Tensor]=None) -> tf.Tensor:
         shape = tf.shape(input_data)
-
         batch_size, length = shape[0], shape[1]
 
         input_sequence  = self.process_image(input_data=input_data, batch_size=batch_size)
         input_sequence  = self._linear_projection_layer.pipeline(input_data=input_sequence) # [B, L, D]
-        input_sequence += self._positional_table[:, :length, :]
+        if mask_matrix is not None:
+            input_sequence *= mask_matrix
+        input_sequence += self._positional_table
         added_cls       = tf.concat([tf.tile(self._cls, [batch_size, 1, 1]), input_sequence], axis=1)
 
         encoder_output     = reduce(lambda input_data, block: block.pipeline(input_data=input_data),
@@ -90,6 +97,7 @@ class VisionTransformer(Model):
 
         if self._classification_number is not None:
             result = self._classify_layer.pipeline(input_data=result)
+        result = tf.concat([result, encoder_output[:, 1:, :]], axis=1)
         return result
 
     def process_image(self, input_data: tf.Tensor, batch_size: tf.Tensor) -> tf.Tensor:

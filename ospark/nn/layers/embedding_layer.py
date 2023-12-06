@@ -33,6 +33,7 @@ class EmbeddingLayer(Layer):
 
     def pipeline(self, input_data: tf.Tensor) -> tf.Tensor:
         with tf.device("cpu:0"):
+            input_data = tf.cast(input_data, tf.int32)
             sequence = tf.nn.embedding_lookup(self._embedding_layer, ids=input_data)
         return sequence
         # mask = tf.cast(tf.math.not_equal(input_data, 0), tf.float32)[:, :, tf.newaxis]

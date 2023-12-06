@@ -15,25 +15,27 @@ class ExdeepTransformerTrainer(Trainer):
                  loss_function: LossFunction,
                  save_delegate: Optional[SaveDelegate]=None,
                  save_times: Optional[int]=None,
-                 save_path: Optional[str]=None,
+                 save_weights_path: Optional[str]=None,
                  use_profiling_phase: Optional[bool]=True,
                  use_auto_graph: Optional[bool]=True,
                  save_init_weights: Optional[bool]=False,
-                 init_weights_path: Optional[str]=None
+                 init_weights_path: Optional[str]=None,
+                 logger: Optional[Logger]=None
                  ):
         super().__init__(model=model,
                          data_generator=data_generator,
                          epoch_number=epoch_number,
                          optimizer=optimizer,
                          save_delegate=save_delegate,
-                         save_path=save_path,
+                         save_weights_path=save_weights_path,
                          save_times=save_times,
                          use_auto_graph=use_auto_graph,
-                         loss_function=loss_function)
+                         loss_function=loss_function,
+                         logger=logger)
         self._use_profiling_phase         = use_profiling_phase
         self._save_init_weights           = save_init_weights
-        self._init_weights_path           = init_weights_path or self.save_path.split(".")[0] + "_init.json"
-        self._log_file                    = open(self.save_path.split(".")[0] + ".txt", 'w')
+        self._init_weights_path           = init_weights_path or self.save_weights_path.split(".")[0] + "_init.json"
+        self._log_file                    = open(self.save_weights_path.split(".")[0] + ".txt", 'w')
 
     @property
     def use_profiling_phase(self) -> bool:
@@ -62,24 +64,24 @@ class ExdeepTransformerTrainer(Trainer):
     def start(self) -> NoReturn:
         if self.save_init_weights:
             weights = self.weights_operator.weights
-            self.save(weights=weights, path=self.init_weights_path)
+            self.save(save_obj=weights, path=self.init_weights_path)
 
         if self.use_profiling_phase:
             dataset = next(iter(self.data_generator))
             profiling_encoder_input, profiling_decoder_input = dataset.training_data, dataset.target_data
 
-            print("Profiling phase start.")
+            self._logger.info("Profiling phase start.")
             self.model.profiling_phase(encoder_input=profiling_encoder_input,
                                        decoder_input=profiling_decoder_input[:, :-1])
-            print("Profiling phase end.")
+            self._logger.info("Profiling phase end.")
 
-            print("=" * 24)
+            self._logger.info("=" * 24)
         else:
             self.model.back_to_standard()
-        print("Training phase start.")
+        self._logger.info("Training phase start.")
         self.training_process(epoch_number=self.epoch_number)
-        print("Training phase end.")
-        print("=" * 24)
+        self._logger.info("Training phase end.")
+        self._logger.info("=" * 24)
 
     def training_process(self, epoch_number) -> NoReturn:
         for epoch in range(epoch_number):
@@ -93,20 +95,20 @@ class ExdeepTransformerTrainer(Trainer):
                 total_accuracies += accuracies
                 total_loss_value += loss_value
                 training_count   += 1
-                print(loss_value)
+                self._logger.info(loss_value)
                 if (batch + 1) % 50 == 0:
-                    print(f"Epoch {epoch + 1} Batch {batch} Loss {loss_value:.4f} Accuracy {accuracies:.4f}")
+                    self._logger.info(f"Epoch {epoch + 1} Batch {batch} Loss {loss_value:.4f} Accuracy {accuracies:.4f}")
 
-            print(f'Epoch {epoch + 1} '
-                  f'Loss {total_loss_value / training_count:.4f} '
-                  f'Accuracy {total_accuracies / training_count:.4f}', file=self.log_file)
-            print(f'Epoch {epoch + 1} '
+            self._logger.info(f'Epoch {epoch + 1} '
+                              f'Loss {total_loss_value / training_count:.4f} '
+                              f'Accuracy {total_accuracies / training_count:.4f}', file=self.log_file)
+            self._logger.info(f'Epoch {epoch + 1} '
                   f'Loss {total_loss_value / training_count:.4f} '
                   f'Accuracy {total_accuracies / training_count:.4f}')
-            print(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
+            self._logger.info(f'Time taken for 1 epoch: {time.time() - start_time:.2f} secs\n')
             if self.will_save(epoch_number=epoch):
-                self.save_delegate.save(weights=self.weights_operator.weights, path=self.save_path)
-        self.save(weights=self.weights_operator.weights, path=self.save_path)
+                self.save_delegate.save(save_obj=self.weights_operator.weights, path=self.save_weights_path)
+        self.save(save_obj=self.weights_operator.weights, path=self.save_weights_path)
         self.log_file.close()
 
     def calculate_accuracy(self, prediction: tf.Tensor, target: tf.Tensor) -> tf.Tensor:

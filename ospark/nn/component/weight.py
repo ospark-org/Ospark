@@ -2,6 +2,7 @@ from __future__ import annotations
 import tensorflow as tf 
 from typing import List, NoReturn, Optional
 from .name_space import NameSpace
+import logging
 
 
 class Weight:
@@ -10,12 +11,12 @@ class Weight:
                  obj_name: str,
                  shape: List[int],
                  trainable: Optional[bool]=None):
-        self._obj_name      = obj_name
-        self._indexed_name  = None
-        self._value         = None
-        self._shape         = shape
-        self._scale         = tf.constant(1.0)
-        self._name_space    = NameSpace("")
+        self._obj_name           = obj_name
+        self._indexed_name       = None
+        self._value: tf.Variable = None
+        self._shape              = shape
+        self._scale              = tf.constant(1.0)
+        self._name_space         = NameSpace("")
         if trainable is None:
             self._trainable          = True
             self._is_default_setting = True
@@ -32,7 +33,7 @@ class Weight:
         return self._indexed_name
 
     @property
-    def value(self) -> None:
+    def value(self) -> tf.Variable:
         return self._value
 
     @property
@@ -42,6 +43,12 @@ class Weight:
     @property
     def trainable(self) -> bool:
         return self._trainable
+
+    @trainable.setter
+    def trainable(self, value: bool):
+        if self._value is not None:
+            print(f"weight: {self.obj_name} is not change trainable attribute.")
+        self._trainable = value
 
     def __mul__(self, other):
         if self._value is not None:
@@ -65,13 +72,14 @@ class Weight:
         manager.add_weight(self)
         if self._value is None:
             #TODO debug mode.
-            #print(f"Initialize weight {self.indexed_name}.")
-            self._value = tf.Variable(self.init_weight() * self._scale, trainable=self.trainable)
+            if manager._show_info:
+                print(f"Initialize weight {self.indexed_name}.")
+            self._value = tf.Variable(self.init_weight() * self._scale, trainable=self.trainable, name=self._indexed_name)
 
     def restore(self, weight: tf.Tensor) -> NoReturn:
         if weight is not None:
             if weight.shape == self.shape:
-                self._value = tf.Variable(weight, trainable=self.trainable)
+                self._value = tf.Variable(weight, trainable=self.trainable, name=self._indexed_name)
             else:
                 print(f"Weight \"{self.indexed_name}\", shape does not match the original setting, so use the initialization weight")
 
@@ -80,6 +88,7 @@ class WeightOperator:
     _instance        = None
     _first_initial   = False
     _restore_weights = {}
+    _show_info       = False
 
     def __new__(cls) -> WeightOperator:
         if not cls._instance:
@@ -94,6 +103,8 @@ class WeightOperator:
     def add_weight(self, weight: Weight) -> NoReturn:
         self._weights.append(weight)
         if weight.indexed_name in self._restore_weights:
+            if self._show_info:
+                print(f"Restore weight: {weight.indexed_name}")
             weight.restore(tf.convert_to_tensor(self._restore_weights.pop(weight.indexed_name), dtype=tf.float32))
 
     @classmethod
@@ -101,8 +112,14 @@ class WeightOperator:
         cls._restore_weights.update(weights)
 
     @classmethod
-    def clean_weights(cls) -> NoReturn:
+    def clear_restore_weights(cls) -> NoReturn:
+        if cls._restore_weights != {}:
+            logging.info(f"There are still {cls._restore_weights.keys()} in the temporary weight that has not been read and will be deleted soon.")
         cls._restore_weights.clear()
+
+    def clear_weights(self):
+        del self._weights
+        self._weights = []
 
     def collect_weights(self, partition_name: Optional[str]=None) -> List[tf.Tensor]:
         if partition_name is None:
@@ -124,16 +141,15 @@ class WeightOperator:
             else:
                 return partition_weights_name
 
-    def get_weights(self, partition_name: Optional[str]) -> dict:
+    def get_weights(self, partition_name: Optional[str]=None) -> dict:
         if partition_name is None:
             return self.weights
         else:
-            partition_weights_name = [weight.indexed_name for weight in self._weights if partition_name in weight.indexed_name]
+            partition_weights_name = {weight.indexed_name: weight.value.numpy().tolist() for weight in self._weights if partition_name in weight.indexed_name}
             if partition_weights_name == []:
                 raise NameError(f"partition name {partition_name} is not exist, please check")
             else:
                 return partition_weights_name
-
 
     @property
     def weights(self) -> dict:
